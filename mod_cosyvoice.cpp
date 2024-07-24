@@ -42,7 +42,8 @@ typedef struct {
 template<typename T>
 class WebsocketClient;
 
-typedef WebsocketClient<websocketpp::config::asio_tls_client> cosyvoice_client;
+//typedef WebsocketClient<websocketpp::config::asio_tls_client> cosyvoice_client;
+typedef WebsocketClient<websocketpp::config::asio_client> cosyvoice_client;
 
 void gen_uuidstr_without_dash(std::string &str_uuid) {
     switch_uuid_t uuid;
