@@ -978,7 +978,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_cosyvoice_load) {
 
     cosyvoice_globals = (cosyvoice_global_t *)switch_core_alloc(pool, sizeof(cosyvoice_global_t));
 
-    cosyvoice_globals->_debug = false;
+    cosyvoice_globals->_debug = true;
 
     SWITCH_ADD_API(api_interface,
                    "cosyvoice_concurrent_cnt",
