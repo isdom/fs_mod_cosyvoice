@@ -410,6 +410,7 @@ public:
         if (cosyvoice_globals->_debug) {
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send cosyvoice first msg\n");
         }
+#if 0
 
         // first message
         bool wait = false;
@@ -435,7 +436,6 @@ public:
             }
         }
 
-#if 0
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
