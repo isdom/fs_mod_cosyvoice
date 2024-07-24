@@ -397,12 +397,13 @@ public:
             // Grab a handle for this connection so we can talk to it in a thread
             // safe manor after the event loop starts.
             m_hdl = con->get_handle();
-            // con->append_header("X-NLS-Token", m_token);
+            con->append_header("X-NLS-Token", m_token);
 
             // Queue the connection. No DNS queries or network connections will be
             // made until the io_service event loop is run.
             m_client.connect(con);
         }
+#if 0
 
         // Create a thread to run the ASIO io_service event loop
         m_thread.reset(new websocketpp::lib::thread(&websocketpp::client<T>::run, &m_client));
@@ -410,7 +411,6 @@ public:
         if (cosyvoice_globals->_debug) {
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send cosyvoice first msg\n");
         }
-#if 0
 
         // first message
         bool wait = false;
