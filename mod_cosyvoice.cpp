@@ -384,7 +384,6 @@ public:
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "StartSynthesis: %s voice: %s\n", uri.c_str(),
                               voice.c_str());
         }
-#if 0
 
         {
             // Create a new connection to the given URI
@@ -411,6 +410,7 @@ public:
         if (cosyvoice_globals->_debug) {
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send cosyvoice first msg\n");
         }
+
         // first message
         bool wait = false;
         while (true) {
@@ -435,6 +435,7 @@ public:
             }
         }
 
+#if 0
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
