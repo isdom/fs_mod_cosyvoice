@@ -711,7 +711,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         return SWITCH_STATUS_FALSE;
     }
 
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "generateSynthesizer ok\n");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateSynthesizer ok\n");
 
 
     // synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
@@ -726,6 +726,8 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
      switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
     delete synthesizer;
+
+     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
 
     return SWITCH_STATUS_SUCCESS;
 }
