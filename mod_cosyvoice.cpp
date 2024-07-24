@@ -711,14 +711,16 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         return SWITCH_STATUS_FALSE;
     }
 
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "generateSynthesizer ok\n");
 
-    synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
 
-     // increment aliasr concurrent count
-     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+    // synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
 
-    synthesizer->runSynthesis(std::string(_text));
-    synthesizer->stopSynthesis();
+    // increment aliasr concurrent count
+    switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+
+    //synthesizer->runSynthesis(std::string(_text));
+    //synthesizer->stopSynthesis();
 
      // decrement aliasr concurrent count
      switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
@@ -951,9 +953,9 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
     if (!vfs_funcs->vfs_exist_func(_saveto)) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s !NOT! exist, gen it\n", _saveto);
 
-        // if ( gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs_funcs) != SWITCH_STATUS_SUCCESS ) {
-        //    switch_goto_status(SWITCH_STATUS_SUCCESS, end);
-        // }
+        if ( gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs_funcs) != SWITCH_STATUS_SUCCESS ) {
+            switch_goto_status(SWITCH_STATUS_SUCCESS, end);
+        }
     } else {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s exist, just play it\n", _saveto);
     }
