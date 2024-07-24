@@ -381,7 +381,7 @@ public:
     // This method will block until the connection is complete
     int startSynthesis(const std::string &uri, const std::string &voice) {
         if (cosyvoice_globals->_debug) {
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "StartSynthesis: %s voice: %s\n", uri.c_str(),
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "StartSynthesis: %s voice: %s\n", uri.c_str(),
                               voice.c_str());
         }
 
@@ -408,7 +408,7 @@ public:
         m_thread.reset(new websocketpp::lib::thread(&websocketpp::client<T>::run, &m_client));
 
         if (cosyvoice_globals->_debug) {
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "start send cosyvoice first msg\n");
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send cosyvoice first msg\n");
         }
         // first message
         bool wait = false;
@@ -466,7 +466,7 @@ public:
                                   ec.message().c_str());
             } else {
                 if (cosyvoice_globals->_debug) {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "startSynthesis: send startSynthesis msg success\n");
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: send startSynthesis msg success\n");
                 }
             }
         }
@@ -491,7 +491,7 @@ public:
                 if (wait) {
                     WaitABit();
                     if (cosyvoice_globals->_debug) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "startSynthesis: wait for SynthesisStarted event\n");
+                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: wait for SynthesisStarted event\n");
                     }
                     continue;
                 }
@@ -713,8 +713,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateSynthesizer ok\n");
 
-
-    // synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
+    synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
 
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
