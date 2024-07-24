@@ -397,7 +397,7 @@ public:
             // Grab a handle for this connection so we can talk to it in a thread
             // safe manor after the event loop starts.
             m_hdl = con->get_handle();
-            con->append_header("X-NLS-Token", m_token);
+            // con->append_header("X-NLS-Token", m_token);
 
             // Queue the connection. No DNS queries or network connections will be
             // made until the io_service event loop is run.
