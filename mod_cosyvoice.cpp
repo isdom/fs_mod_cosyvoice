@@ -949,9 +949,11 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
     }
 
     if (!vfs_funcs->vfs_exist_func(_saveto)) {
-        if ( gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs_funcs) != SWITCH_STATUS_SUCCESS ) {
-            switch_goto_status(SWITCH_STATUS_SUCCESS, end);
-        }
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s !NOT! exist, gen it\n", _saveto);
+
+        // if ( gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs_funcs) != SWITCH_STATUS_SUCCESS ) {
+        //    switch_goto_status(SWITCH_STATUS_SUCCESS, end);
+        // }
     } else {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s exist, just play it\n", _saveto);
     }
