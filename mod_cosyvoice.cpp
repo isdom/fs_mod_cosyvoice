@@ -384,6 +384,7 @@ public:
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "StartSynthesis: %s voice: %s\n", uri.c_str(),
                               voice.c_str());
         }
+#if 0
 
         {
             // Create a new connection to the given URI
@@ -497,7 +498,7 @@ public:
                 }
             }
         }
-
+#endif
         return 0;
     }
 
