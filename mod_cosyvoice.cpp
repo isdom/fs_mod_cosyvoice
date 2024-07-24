@@ -631,7 +631,7 @@ cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, con
         return nullptr;
     }
 
-    fac->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
+    // fac->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
     return fac;
 }
 
