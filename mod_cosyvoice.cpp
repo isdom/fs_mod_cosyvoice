@@ -528,8 +528,12 @@ public:
                            }}
         };
 
+        std::string str_runSynthesis = json_runSynthesis.dump();
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
+                          str_runSynthesis.c_str());
+
         websocketpp::lib::error_code ec;
-        m_client.send(m_hdl, json_runSynthesis.dump(), websocketpp::frame::opcode::text, ec);
+        m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
         if (ec) {
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "runSynthesis: send runSynthesis msg failed: %s\n",
                               ec.message().c_str());
@@ -557,8 +561,12 @@ public:
                     }}
             };
 
+            std::string str_stopSynthesis = json_stopSynthesis.dump();
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
+                              str_stopSynthesis.c_str());
+
             websocketpp::lib::error_code ec;
-            m_client.send(m_hdl, json_stopSynthesis.dump(), websocketpp::frame::opcode::text, ec);
+            m_client.send(m_hdl, str_stopSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
                 switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "stopSynthesis: send stopSynthesis msg failed: %s\n",
                                   ec.message().c_str());
@@ -726,8 +734,8 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    //synthesizer->runSynthesis(std::string(_text));
-    //synthesizer->stopSynthesis();
+    synthesizer->runSynthesis(std::string(_text));
+    synthesizer->stopSynthesis();
 
      // decrement aliasr concurrent count
      switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
