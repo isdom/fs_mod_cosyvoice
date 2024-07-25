@@ -451,7 +451,7 @@ public:
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
             // https://help.aliyun.com/zh/isi/developer-reference/websocket-protocol-description
-
+#if 0
             nlohmann::json json_startSynthesis;
             nlohmann::json json_header, json_payload;
 
@@ -473,7 +473,28 @@ public:
 
             json_startSynthesis["header"] = json_header;
             json_startSynthesis["payload"] = json_payload;
-
+#else
+            nlohmann::json json_startSynthesis = {
+                    {"header", {
+                                       // 当次消息请求ID，随机生成32位唯一ID。
+                                       {"message_id", message_id},
+                                       // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
+                                       {"task_id", m_task_id},
+                                       {"namespace", "FlowingSpeechSynthesizer"},
+                                       {"name", "StartSynthesis"},
+                                       {"appkey", m_appkey}
+                               }},
+                    {"payload", {
+                                       {"voice", voice},
+                                       {"format", "wav"},
+                                       {"sample_rate", 16000},
+                                       {"volume", 100},
+                                       {"speech_rate", 60},
+                                       {"pitch_rate", 0},
+                                       {"enable_subtitle", true}
+                               }}
+            };
+#endif
             std::string str_startSynthesis = json_startSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: send startSynthesis msg, detail: %s\n",
                               str_startSynthesis.c_str());
@@ -505,7 +526,6 @@ public:
                         wait = true;
                     } else {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: m_synthesisReady is true\n");
-                        wait = false;
                         break;
                     }
                 }
@@ -527,7 +547,7 @@ public:
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
-
+#if 0
             nlohmann::json json_runSynthesis;
             nlohmann::json json_header, json_payload;
 
@@ -543,7 +563,22 @@ public:
 
             json_runSynthesis["header"] = json_header;
             json_runSynthesis["payload"] = json_payload;
-
+#else
+            nlohmann::json json_runSynthesis = {
+                    {"header", {
+                                       // 当次消息请求ID，随机生成32位唯一ID。
+                                       {"message_id", message_id},
+                                       // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
+                                       {"task_id", m_task_id},
+                                       {"namespace", "FlowingSpeechSynthesizer"},
+                                       {"name", "RunSynthesis"},
+                                       {"appkey", m_appkey}
+                               }},
+                    {"payload", {
+                                       {"text", text}
+                               }}
+            };
+#endif
             std::string str_runSynthesis = json_runSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
@@ -567,7 +602,7 @@ public:
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
-
+#if 0
             nlohmann::json json_stopSynthesis;
             nlohmann::json json_header;
 
@@ -581,26 +616,7 @@ public:
 
             json_stopSynthesis["header"] = json_header;
 
-            std::string str_stopSynthesis = json_stopSynthesis.dump();
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
-                              str_stopSynthesis.c_str());
-
-            websocketpp::lib::error_code ec;
-            m_client.send(m_hdl, str_stopSynthesis, websocketpp::frame::opcode::text, ec);
-            if (ec) {
-                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "stopSynthesis: send stopSynthesis msg failed: %s\n",
-                                  ec.message().c_str());
-            } else {
-                if (cosyvoice_globals->_debug) {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg success\n");
-                }
-            }
-        }
-#if 0
-        {
-            std::string message_id;
-            gen_uuidstr_without_dash(message_id);
-
+#else
             nlohmann::json json_stopSynthesis = {
                     {"header", {
                             // 当次消息请求ID，随机生成32位唯一ID。
@@ -612,7 +628,7 @@ public:
                             {"appkey", m_appkey}
                     }}
             };
-
+#endif
             std::string str_stopSynthesis = json_stopSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
                               str_stopSynthesis.c_str());
@@ -628,7 +644,6 @@ public:
                 }
             }
         }
-#endif
         m_client.stop_perpetual();
         m_thread->join();
         // onChannelClosed(m_asr_ctx);
@@ -786,22 +801,17 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call runSynthesis\n");
 
-    // wait for 30s
-    // WaitABit(1000 * 10);
-
     // increment aliasr concurrent count
-    // switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+    switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
     synthesizer->runSynthesis(std::string(_text));
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
 
-    // wait for 30s
-    // WaitABit(1000 * 10);
     synthesizer->stopSynthesis();
 
     // decrement aliasr concurrent count
-    // switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+    switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
     delete synthesizer;
 
