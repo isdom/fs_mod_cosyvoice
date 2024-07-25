@@ -369,7 +369,6 @@ public:
                 switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "binary: file_name: %s, data.size() %d, vfs: %p\n",
                                   m_saveto.c_str(), num_samples, m_vfs);
 
-                /*
                 void *tts_file = m_vfs->vfs_open_func(m_saveto.c_str());
                 if (tts_file) {
                     m_vfs->vfs_seek_func(0, SEEK_END, tts_file);
@@ -379,7 +378,6 @@ public:
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "binary: can't open file_name: %s for append\n",
                                       m_saveto.c_str());
                 }
-                 */
 
                 if (cosyvoice_globals->_debug) {
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on binary audio data received\n");
@@ -550,7 +548,6 @@ public:
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
 
-// #if 0
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
@@ -561,9 +558,12 @@ public:
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg success\n");
                 }
             }
-// #endif
         }
-// #if 0
+
+        return 0;
+    }
+
+    int stopSynthesis() {
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
@@ -596,11 +596,7 @@ public:
                 }
             }
         }
-// #endif
-        return 0;
-    }
-
-    int stopSynthesis() {
+#if 0
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
@@ -632,7 +628,7 @@ public:
                 }
             }
         }
-
+#endif
         m_client.stop_perpetual();
         m_thread->join();
         // onChannelClosed(m_asr_ctx);
@@ -801,13 +797,13 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
 
     // wait for 30s
-    WaitABit(1000 * 10);
-    // synthesizer->stopSynthesis();
+    // WaitABit(1000 * 10);
+    synthesizer->stopSynthesis();
 
     // decrement aliasr concurrent count
     // switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    // delete synthesizer;
+    delete synthesizer;
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
 
