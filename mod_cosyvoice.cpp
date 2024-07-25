@@ -543,7 +543,7 @@ public:
             std::string str_runSynthesis = json_runSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
-
+#if 0
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
@@ -554,6 +554,7 @@ public:
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg success\n");
                 }
             }
+#endif
         }
         {
             std::string message_id;
@@ -574,7 +575,7 @@ public:
             std::string str_stopSynthesis = json_stopSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
                               str_stopSynthesis.c_str());
-
+#if 0
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_stopSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
@@ -585,6 +586,7 @@ public:
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg success\n");
                 }
             }
+#endif
         }
         // wait for 30s, not return
         // WaitABit(1000 * 30);
