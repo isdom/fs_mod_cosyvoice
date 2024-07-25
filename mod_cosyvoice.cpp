@@ -67,11 +67,11 @@ void gen_uuidstr_without_dash(std::string &str_uuid) {
 /**
  * Define a semi-cross platform helper method that waits/sleeps for a bit.
  */
-void WaitABit() {
+void WaitABit(long milliseconds) {
 #ifdef WIN32
     Sleep(1000);
 #else
-    usleep(1000);
+    usleep(1000 * milliseconds);
 #endif
 }
 
@@ -142,13 +142,15 @@ public:
     }
 
     void on_message(websocketpp::connection_hdl hdl, message_ptr msg) {
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on_message: opcode = %d\n", msg->get_opcode());
+
         const std::string &payload = msg->get_payload();
         switch (msg->get_opcode()) {
             case websocketpp::frame::opcode::text: {
                 nlohmann::json synthesis_event = nlohmann::json::parse(payload);
                 std::string id_str = getThreadIdOfString(std::this_thread::get_id());
                 if (cosyvoice_globals->_debug) {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "thread: %s, on_message = %s\n",
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "thread: %s, on_message = %s\n",
                                       id_str.c_str(),
                                       payload.c_str());
                 }
@@ -174,7 +176,7 @@ public:
                         m_synthesisReady = true;
                     }
                     if (cosyvoice_globals->_debug) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "on SynthesisStarted event\n");
+                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisStarted event\n");
                     }
                 } else if (synthesis_event["header"]["name"] == "SentenceBegin") {
                     /* SentenceBegin 事件
@@ -194,7 +196,7 @@ public:
                      */
                     // onSentenceEnd(m_asr_ctx, asr_result["text"]);
                     if (cosyvoice_globals->_debug) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "on SentenceBegin event\n");
+                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenceBegin event\n");
                     }
                 } else if (synthesis_event["header"]["name"] == "SentenceSynthesis") {
                     /* SentenceSynthesis 事件
@@ -246,7 +248,7 @@ public:
                      */
                     // onSentenceEnd(m_asr_ctx, asr_result["text"]);
                     if (cosyvoice_globals->_debug) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "on SentenSentenceSynthesis event\n");
+                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenSentenceSynthesis event\n");
                     }
                 } else if (synthesis_event["header"]["name"] == "SentenceEnd") {
                     /* SentenceEnd 事件
@@ -320,7 +322,7 @@ public:
                      */
                     // onSentenceEnd(m_asr_ctx, asr_result["text"]);
                     if (cosyvoice_globals->_debug) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "on SentenceEnd event\n");
+                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenceEnd event\n");
                     }
                 } else if (synthesis_event["header"]["name"] == "SynthesisCompleted") {
                     /* SynthesisCompleted 事件
@@ -337,7 +339,7 @@ public:
                      */
                     // onSentenceEnd(m_asr_ctx, asr_result["text"]);
                     if (cosyvoice_globals->_debug) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "on SynthesisCompleted event\n");
+                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisCompleted event\n");
                     }
                     websocketpp::lib::error_code ec;
 
@@ -369,7 +371,7 @@ public:
                 }
 
                 if (cosyvoice_globals->_debug) {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "on binary audio data received\n");
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on binary audio data received\n");
                 }
                 break;
             }
@@ -431,7 +433,7 @@ public:
 
             if (wait) {
                 // LOG(INFO) << "wait.." << m_open;
-                WaitABit();
+                WaitABit(1000L);
                 continue;
             }
         }
@@ -461,8 +463,12 @@ public:
                     }}
             };
 
+            std::string str_startSynthesis = json_startSynthesis.dump();
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: send startSynthesis msg, detail: %s\n",
+                              str_startSynthesis.c_str());
+
             websocketpp::lib::error_code ec;
-            m_client.send(m_hdl, json_startSynthesis.dump(), websocketpp::frame::opcode::text, ec);
+            m_client.send(m_hdl, str_startSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
                 switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "startSynthesis: send startSynthesis msg failed: %s\n",
                                   ec.message().c_str());
@@ -491,7 +497,7 @@ public:
                 }
 
                 if (wait) {
-                    WaitABit();
+                    WaitABit(1000L);
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: wait for SynthesisStarted event\n");
                     }
@@ -529,7 +535,7 @@ public:
                               ec.message().c_str());
         } else {
             if (cosyvoice_globals->_debug) {
-                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "runSynthesis: send runSynthesis msg success\n");
+                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg success\n");
             }
         }
     }
@@ -558,7 +564,7 @@ public:
                                   ec.message().c_str());
             } else {
                 if (cosyvoice_globals->_debug) {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "stopSynthesis: send stopSynthesis msg success\n");
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg success\n");
                 }
             }
         }
@@ -571,7 +577,7 @@ public:
     // The open handler will signal that we are ready to start sending data
     void on_open(const websocketpp::connection_hdl &) {
         if (cosyvoice_globals->_debug) {
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Connection opened, starting data!\n");
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Connection opened, starting data!\n");
         }
 
         {
@@ -584,7 +590,7 @@ public:
     // The close handler will signal that we should stop sending data
     void on_close(const websocketpp::connection_hdl &) {
         if (cosyvoice_globals->_debug) {
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Connection closed, stopping data!\n");
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Connection closed, stopping data!\n");
         }
 
         {
@@ -885,7 +891,7 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
 
     int argc = switch_split(my_cmd, ' ', argv);
     if (cosyvoice_globals->_debug) {
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "cmd:%s, args count: %d\n", my_cmd, argc);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cmd:%s, args count: %d\n", my_cmd, argc);
     }
 
     if (argc < 1) {
@@ -901,7 +907,7 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
                 char *var = ss[0];
                 char *val = ss[1];
                 if (cosyvoice_globals->_debug) {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "process arg: %s = %s\n", var, val);
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "process arg: %s = %s\n", var, val);
                 }
                 if (!strcasecmp(var, "token")) {
                     _token = switch_core_strdup(pool, val);
