@@ -587,7 +587,7 @@ public:
             }
         }
         // wait for 30s, not return
-        WaitABit(1000 * 30);
+        // WaitABit(1000 * 30);
     }
 
     int stopSynthesis() {
@@ -780,8 +780,8 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    std::string txt = _text;
-    synthesizer->runSynthesis(txt);
+    std::string *txt = new std::string(_text);
+    synthesizer->runSynthesis(*txt);
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
 
