@@ -357,9 +357,10 @@ public:
                 const auto* wav_data = static_cast<const char*>(payload.data());
                 int32_t num_samples = payload.size();
 
-                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "binary: file_name: %s, data.size() %ld, vfs: %p\n",
+                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "binary: file_name: %s, data.size() %d, vfs: %p\n",
                                   m_saveto.c_str(), num_samples, m_vfs);
 
+                /*
                 void *tts_file = m_vfs->vfs_open_func(m_saveto.c_str());
                 if (tts_file) {
                     m_vfs->vfs_seek_func(0, SEEK_END, tts_file);
@@ -369,6 +370,7 @@ public:
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "binary: can't open file_name: %s for append\n",
                                       m_saveto.c_str());
                 }
+                 */
 
                 if (cosyvoice_globals->_debug) {
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on binary audio data received\n");
