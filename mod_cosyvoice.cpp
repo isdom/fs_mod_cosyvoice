@@ -529,7 +529,7 @@ public:
 
             nlohmann::json json_runSynthesis;
             nlohmann::json json_header, json_payload;
-
+#if 0
             // 当次消息请求ID，随机生成32位唯一ID。
             json_header["message_id"] = message_id;
             // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
@@ -547,7 +547,7 @@ public:
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
 
-#if 0
+
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
@@ -566,7 +566,7 @@ public:
 
             nlohmann::json json_stopSynthesis;
             nlohmann::json json_header;
-
+#if 0
             // 当次消息请求ID，随机生成32位唯一ID。
             json_header["message_id"] = message_id;
             // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
@@ -580,7 +580,7 @@ public:
             std::string str_stopSynthesis = json_stopSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
                               str_stopSynthesis.c_str());
-#if 0
+
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_stopSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
