@@ -563,13 +563,14 @@ public:
             }
 #endif
         }
+#if 0
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
 
             nlohmann::json json_stopSynthesis;
             nlohmann::json json_header;
-#if 0
+
             // 当次消息请求ID，随机生成32位唯一ID。
             json_header["message_id"] = message_id;
             // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
@@ -594,8 +595,8 @@ public:
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg success\n");
                 }
             }
-#endif
         }
+#endif
     }
 
     int stopSynthesis() {
