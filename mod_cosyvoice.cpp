@@ -530,8 +530,8 @@ public:
             // std::string message_id;
             // gen_uuidstr_without_dash(message_id);
 
-            // nlohmann::json json_runSynthesis;
-            // nlohmann::json json_header, json_payload;
+            nlohmann::json json_runSynthesis;
+            nlohmann::json json_header, json_payload;
 #if 0
             // 当次消息请求ID，随机生成32位唯一ID。
             json_header["message_id"] = message_id;
@@ -790,7 +790,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call runSynthesis\n");
 
     // wait for 30s
-    WaitABit(1000 * 30);
+    WaitABit(1000 * 10);
 
     // increment aliasr concurrent count
     // switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
@@ -800,7 +800,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
 
     // wait for 30s
-    WaitABit(1000 * 30);
+    WaitABit(1000 * 10);
     // synthesizer->stopSynthesis();
 
     // decrement aliasr concurrent count
