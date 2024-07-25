@@ -527,8 +527,8 @@ public:
 
     int runSynthesis(const std::string &text) {
         {
-            std::string message_id;
-            gen_uuidstr_without_dash(message_id);
+            // std::string message_id;
+            // gen_uuidstr_without_dash(message_id);
 
             nlohmann::json json_runSynthesis;
             nlohmann::json json_header, json_payload;
