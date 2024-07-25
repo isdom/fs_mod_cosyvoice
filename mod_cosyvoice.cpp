@@ -493,8 +493,8 @@ public:
         }
 
         {
-            bool wait = false;
             while (true) {
+                bool wait = false;
                 {
                     scoped_lock guard(m_lock);
                     // If the connection has been closed, stop generating data
@@ -503,8 +503,11 @@ public:
                     }
                     // If the connection hasn't receive synthesisReady event
                     if (!m_synthesisReady) {
+                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: m_synthesisReady is false\n");
                         wait = true;
                     } else {
+                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: m_synthesisReady is true\n");
+                        wait = false;
                         break;
                     }
                 }
