@@ -178,6 +178,7 @@ public:
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisStarted event\n");
                     }
+                    return;
                 } else if (synthesis_event["header"]["name"] == "SentenceBegin") {
                     /* SentenceBegin 事件
                     {
@@ -736,7 +737,9 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    synthesizer->runSynthesis(std::string(_text));
+     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
+
+    // synthesizer->runSynthesis(std::string(_text));
     synthesizer->stopSynthesis();
 
      // decrement aliasr concurrent count
