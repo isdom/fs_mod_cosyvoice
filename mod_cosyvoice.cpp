@@ -736,9 +736,10 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
 
-    // synthesizer->runSynthesis(std::string(_text));
+    synthesizer->runSynthesis(std::string(_text));
+
+     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
     // wait for 30s
     WaitABit(1000 * 30);
     synthesizer->stopSynthesis();
@@ -746,7 +747,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     // decrement aliasr concurrent count
     switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    delete synthesizer;
+    // delete synthesizer;
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
 
