@@ -524,7 +524,7 @@ public:
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
-
+#if 0
             nlohmann::json json_runSynthesis = {
                     {"header", {
                                        // 当次消息请求ID，随机生成32位唯一ID。
@@ -539,7 +539,7 @@ public:
                                        {"text", text}
                                }}
             };
-#if 0
+
             std::string str_runSynthesis = json_runSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
@@ -559,7 +559,7 @@ public:
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
-
+#if 0
             nlohmann::json json_stopSynthesis = {
                     {"header", {
                             // 当次消息请求ID，随机生成32位唯一ID。
@@ -571,7 +571,7 @@ public:
                             {"appkey", m_appkey}
                     }}
             };
-#if 0
+
             std::string str_stopSynthesis = json_stopSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
                               str_stopSynthesis.c_str());
