@@ -412,7 +412,6 @@ public:
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send cosyvoice first msg\n");
         }
 
-#if 0
         // first message
         bool wait = false;
         while (true) {
@@ -500,7 +499,7 @@ public:
                 }
             }
         }
-#endif
+
         return 0;
     }
 
@@ -857,7 +856,7 @@ static void ues_to_utf8(std::string &ues) {
     while (true);
 }
 
-#define MAX_API_ARGC 10
+#define MAX_API_ARGC 20
 
 // uuid_cosyvoice <uuid> text=XXXXX saveto=<path> token=<token> appkey=<key> url=<url> playback_id=<id> voice=<voice>
 SWITCH_STANDARD_API(uuid_cosyvoice_function) {
