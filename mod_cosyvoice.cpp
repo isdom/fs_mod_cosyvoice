@@ -453,26 +453,28 @@ public:
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
             // https://help.aliyun.com/zh/isi/developer-reference/websocket-protocol-description
-            nlohmann::json json_startSynthesis = {
-                    {"header", {
-                            // 当次消息请求ID，随机生成32位唯一ID。
-                            {"message_id", message_id},
-                            // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
-                            {"task_id", m_task_id},
-                            {"namespace", "FlowingSpeechSynthesizer"},
-                            {"name", "StartSynthesis"},
-                            {"appkey", m_appkey}
-                    }},
-                    {"payload", {
-                           {"voice", voice},
-                           {"format", "wav"},
-                           {"sample_rate", 16000},
-                           {"volume", 100},
-                           {"speech_rate", 60},
-                           {"pitch_rate", 0},
-                           {"enable_subtitle", true}
-                    }}
-            };
+
+            nlohmann::json json_startSynthesis;
+            nlohmann::json json_header, json_payload;
+
+            // 当次消息请求ID，随机生成32位唯一ID。
+            json_header["message_id"] = message_id;
+            // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
+            json_header["task_id"] = m_task_id;
+            json_header["namespace"] = "FlowingSpeechSynthesizer";
+            json_header["name"] = "StartSynthesis";
+            json_header["appkey"] = m_appkey;
+
+            json_payload["voice"] = voice;
+            json_payload["format"] = "wav";
+            json_payload["sample_rate"] = 16000;
+            json_payload["volume"] = 100;
+            json_payload["speech_rate"] = 60;
+            json_payload["pitch_rate"] = 0;
+            json_payload["enable_subtitle"] = true;
+
+            json_startSynthesis["header"] = json_header;
+            json_startSynthesis["payload"] = json_payload;
 
             std::string str_startSynthesis = json_startSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: send startSynthesis msg, detail: %s\n",
@@ -524,26 +526,28 @@ public:
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
-#if 0
-            nlohmann::json json_runSynthesis = {
-                    {"header", {
-                                       // 当次消息请求ID，随机生成32位唯一ID。
-                                       {"message_id", message_id},
-                                       // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
-                                       {"task_id", m_task_id},
-                                       {"namespace", "FlowingSpeechSynthesizer"},
-                                       {"name", "RunSynthesis"},
-                                       {"appkey", m_appkey}
-                               }},
-                    {"payload", {
-                                       {"text", text}
-                               }}
-            };
+
+            nlohmann::json json_runSynthesis;
+            nlohmann::json json_header, json_payload;
+
+            // 当次消息请求ID，随机生成32位唯一ID。
+            json_header["message_id"] = message_id;
+            // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
+            json_header["task_id"] = m_task_id;
+            json_header["namespace"] = "FlowingSpeechSynthesizer";
+            json_header["name"] = "RunSynthesis";
+            json_header["appkey"] = m_appkey;
+
+            json_payload["text"] = text;
+
+            json_runSynthesis["header"] = json_header;
+            json_runSynthesis["payload"] = json_payload;
 
             std::string str_runSynthesis = json_runSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
 
+#if 0
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
@@ -559,23 +563,24 @@ public:
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
-#if 0
-            nlohmann::json json_stopSynthesis = {
-                    {"header", {
-                            // 当次消息请求ID，随机生成32位唯一ID。
-                            {"message_id", message_id},
-                            // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
-                            {"task_id", m_task_id},
-                            {"namespace", "FlowingSpeechSynthesizer"},
-                            {"name", "StopSynthesis"},
-                            {"appkey", m_appkey}
-                    }}
-            };
+
+            nlohmann::json json_stopSynthesis;
+            nlohmann::json json_header;
+
+            // 当次消息请求ID，随机生成32位唯一ID。
+            json_header["message_id"] = message_id;
+            // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
+            json_header["task_id"] = m_task_id;
+            json_header["namespace"] = "FlowingSpeechSynthesizer";
+            json_header["name"] = "StopSynthesis";
+            json_header["appkey"] = m_appkey;
+
+            json_stopSynthesis["header"] = json_header;
 
             std::string str_stopSynthesis = json_stopSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
                               str_stopSynthesis.c_str());
-
+#if 0
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_stopSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
