@@ -791,7 +791,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call runSynthesis\n");
 
     // wait for 30s
-    WaitABit(1000 * 10);
+    // WaitABit(1000 * 10);
 
     // increment aliasr concurrent count
     // switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
