@@ -527,12 +527,12 @@ public:
 
     int runSynthesis(const std::string &text) {
         {
-            // std::string message_id;
-            // gen_uuidstr_without_dash(message_id);
+            std::string message_id;
+            gen_uuidstr_without_dash(message_id);
 
             nlohmann::json json_runSynthesis;
             nlohmann::json json_header, json_payload;
-#if 0
+
             // 当次消息请求ID，随机生成32位唯一ID。
             json_header["message_id"] = message_id;
             // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
@@ -541,7 +541,7 @@ public:
             json_header["name"] = "RunSynthesis";
             json_header["appkey"] = m_appkey;
 
-            // json_payload["text"] = text;
+            json_payload["text"] = text;
 
             json_runSynthesis["header"] = json_header;
             json_runSynthesis["payload"] = json_payload;
@@ -550,7 +550,7 @@ public:
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
 
-
+#if 0
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
