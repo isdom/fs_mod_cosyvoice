@@ -530,8 +530,8 @@ public:
             // std::string message_id;
             // gen_uuidstr_without_dash(message_id);
 
-            nlohmann::json json_runSynthesis;
-            nlohmann::json json_header, json_payload;
+            // nlohmann::json json_runSynthesis;
+            // nlohmann::json json_header, json_payload;
 #if 0
             // 当次消息请求ID，随机生成32位唯一ID。
             json_header["message_id"] = message_id;
@@ -597,6 +597,7 @@ public:
             }
         }
 #endif
+        return 0;
     }
 
     int stopSynthesis() {
@@ -792,7 +793,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     WaitABit(1000 * 30);
 
     // increment aliasr concurrent count
-    switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+    // switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
     synthesizer->runSynthesis(std::string(_text));
 
@@ -803,7 +804,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     // synthesizer->stopSynthesis();
 
     // decrement aliasr concurrent count
-    switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+    // switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
     // delete synthesizer;
 
