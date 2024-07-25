@@ -519,36 +519,69 @@ public:
     }
 
     int runSynthesis(const std::string &text) {
-        std::string message_id;
-        gen_uuidstr_without_dash(message_id);
+        {
+            std::string message_id;
+            gen_uuidstr_without_dash(message_id);
 
-        nlohmann::json json_runSynthesis = {
-                {"header", {
-                                   // 当次消息请求ID，随机生成32位唯一ID。
-                                   {"message_id", message_id},
-                                   // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
-                                   {"task_id", m_task_id},
-                                   {"namespace", "FlowingSpeechSynthesizer"},
-                                   {"name", "RunSynthesis"},
-                                   {"appkey", m_appkey}
-                           }},
-                {"payload", {
-                                   {"text", text}
-                           }}
-        };
+            nlohmann::json json_runSynthesis = {
+                    {"header", {
+                                       // 当次消息请求ID，随机生成32位唯一ID。
+                                       {"message_id", message_id},
+                                       // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
+                                       {"task_id", m_task_id},
+                                       {"namespace", "FlowingSpeechSynthesizer"},
+                                       {"name", "RunSynthesis"},
+                                       {"appkey", m_appkey}
+                               }},
+                    {"payload", {
+                                       {"text", text}
+                               }}
+            };
 
-        std::string str_runSynthesis = json_runSynthesis.dump();
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
-                          str_runSynthesis.c_str());
+            std::string str_runSynthesis = json_runSynthesis.dump();
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
+                              str_runSynthesis.c_str());
 
-        websocketpp::lib::error_code ec;
-        m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
-        if (ec) {
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "runSynthesis: send runSynthesis msg failed: %s\n",
-                              ec.message().c_str());
-        } else {
-            if (cosyvoice_globals->_debug) {
-                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg success\n");
+            websocketpp::lib::error_code ec;
+            m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
+            if (ec) {
+                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "runSynthesis: send runSynthesis msg failed: %s\n",
+                                  ec.message().c_str());
+            } else {
+                if (cosyvoice_globals->_debug) {
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg success\n");
+                }
+            }
+        }
+        {
+            std::string message_id;
+            gen_uuidstr_without_dash(message_id);
+
+            nlohmann::json json_stopSynthesis = {
+                    {"header", {
+                            // 当次消息请求ID，随机生成32位唯一ID。
+                            {"message_id", message_id},
+                            // 整个实时语音合成的会话ID，整个请求中需要保持一致，32位唯一ID。
+                            {"task_id", m_task_id},
+                            {"namespace", "FlowingSpeechSynthesizer"},
+                            {"name", "StopSynthesis"},
+                            {"appkey", m_appkey}
+                    }}
+            };
+
+            std::string str_stopSynthesis = json_stopSynthesis.dump();
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
+                              str_stopSynthesis.c_str());
+
+            websocketpp::lib::error_code ec;
+            m_client.send(m_hdl, str_stopSynthesis, websocketpp::frame::opcode::text, ec);
+            if (ec) {
+                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "stopSynthesis: send stopSynthesis msg failed: %s\n",
+                                  ec.message().c_str());
+            } else {
+                if (cosyvoice_globals->_debug) {
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg success\n");
+                }
             }
         }
         // wait for 30s, not return
@@ -747,7 +780,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
     synthesizer->runSynthesis(std::string(_text));
 
-     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
     // wait for 30s
     WaitABit(1000 * 30);
     synthesizer->stopSynthesis();
