@@ -147,7 +147,6 @@ public:
         const std::string &payload = msg->get_payload();
         switch (msg->get_opcode()) {
             case websocketpp::frame::opcode::text: {
-                nlohmann::json synthesis_event = nlohmann::json::parse(payload);
                 std::string id_str = getThreadIdOfString(std::this_thread::get_id());
                 if (cosyvoice_globals->_debug) {
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "thread: %s, on_message = %s\n",
@@ -155,6 +154,13 @@ public:
                                       payload.c_str());
                 }
 
+                if (m_synthesisReady) {
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "thread: %s, m_synthesisReady == true, ignore successor text msg\n",
+                                      id_str.c_str());
+                    return;
+                }
+
+                nlohmann::json synthesis_event = nlohmann::json::parse(payload);
                 if (synthesis_event["header"]["name"] == "SynthesisStarted") {
                     /* SynthesisStarted 事件
                     {
