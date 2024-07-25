@@ -538,7 +538,7 @@ public:
             json_header["name"] = "RunSynthesis";
             json_header["appkey"] = m_appkey;
 
-            json_payload["text"] = text;
+            // json_payload["text"] = text;
 
             json_runSynthesis["header"] = json_header;
             json_runSynthesis["payload"] = json_payload;
@@ -785,8 +785,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    std::string *txt = new std::string(_text);
-    synthesizer->runSynthesis(*txt);
+    synthesizer->runSynthesis(std::string(_text));
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
 
