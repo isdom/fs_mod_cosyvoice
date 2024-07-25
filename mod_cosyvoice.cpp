@@ -550,7 +550,7 @@ public:
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
 
-#if 0
+// #if 0
             websocketpp::lib::error_code ec;
             m_client.send(m_hdl, str_runSynthesis, websocketpp::frame::opcode::text, ec);
             if (ec) {
@@ -561,9 +561,9 @@ public:
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg success\n");
                 }
             }
-#endif
+// #endif
         }
-#if 0
+// #if 0
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
@@ -596,7 +596,7 @@ public:
                 }
             }
         }
-#endif
+// #endif
         return 0;
     }
 
@@ -636,6 +636,7 @@ public:
         m_client.stop_perpetual();
         m_thread->join();
         // onChannelClosed(m_asr_ctx);
+        return 0;
     }
 
     // The open handler will signal that we are ready to start sending data
