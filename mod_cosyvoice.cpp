@@ -154,11 +154,13 @@ public:
                                       payload.c_str());
                 }
 
+                /*
                 if (m_synthesisReady) {
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "thread: %s, m_synthesisReady == true, ignore successor text msg\n",
                                       id_str.c_str());
                     return;
                 }
+                 */
 
                 nlohmann::json synthesis_event = nlohmann::json::parse(payload);
                 if (synthesis_event["header"]["name"] == "SynthesisStarted") {
@@ -778,12 +780,14 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    synthesizer->runSynthesis(std::string(_text));
+    std::string txt = _text;
+    synthesizer->runSynthesis(txt);
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
+
     // wait for 30s
     WaitABit(1000 * 30);
-    synthesizer->stopSynthesis();
+    // synthesizer->stopSynthesis();
 
     // decrement aliasr concurrent count
     switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
