@@ -551,6 +551,8 @@ public:
                 switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg success\n");
             }
         }
+        // wait for 30s, not return
+        WaitABit(1000 * 30);
     }
 
     int stopSynthesis() {
