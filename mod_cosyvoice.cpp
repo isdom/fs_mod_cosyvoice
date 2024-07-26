@@ -803,18 +803,12 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         return SWITCH_STATUS_FALSE;
     }
 
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateSynthesizer ok\n");
-
     synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
-
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call runSynthesis\n");
 
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
     synthesizer->runSynthesis(std::string(_text));
-
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "before call stopSynthesis\n");
 
     synthesizer->stopSynthesis();
 
