@@ -3,6 +3,8 @@
 
 #define ASIO_STANDALONE 1
 
+#define ENABLE_WSS 0
+
 #include <websocketpp/client.hpp>
 #include <websocketpp/common/thread.hpp>
 #include <websocketpp/config/asio_client.hpp>
@@ -42,8 +44,11 @@ typedef struct {
 template<typename T>
 class WebsocketClient;
 
-//typedef WebsocketClient<websocketpp::config::asio_tls_client> cosyvoice_client;
+#if ENABLE_WSS
+typedef WebsocketClient<websocketpp::config::asio_tls_client> cosyvoice_client;
+#else
 typedef WebsocketClient<websocketpp::config::asio_client> cosyvoice_client;
+#endif
 
 void gen_uuidstr_without_dash(std::string &str_uuid) {
     switch_uuid_t uuid;
@@ -713,7 +718,10 @@ cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, con
         return nullptr;
     }
 
-    // fac->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
+#if ENABLE_WSS
+    fac->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
+#endif
+
     return fac;
 }
 
