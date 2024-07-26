@@ -42,8 +42,8 @@ typedef struct {
 template<typename T>
 class WebsocketClient;
 
-typedef WebsocketClient<websocketpp::config::asio_tls_client> cosyvoice_client;
-//typedef WebsocketClient<websocketpp::config::asio_client> cosyvoice_client;
+//typedef WebsocketClient<websocketpp::config::asio_tls_client> cosyvoice_client;
+typedef WebsocketClient<websocketpp::config::asio_client> cosyvoice_client;
 
 void gen_uuidstr_without_dash(std::string &str_uuid) {
     switch_uuid_t uuid;
@@ -52,7 +52,7 @@ void gen_uuidstr_without_dash(std::string &str_uuid) {
     char buf[37]; // 32 bytes for UUID + 5 bytes for '-\0'
     switch_uuid_format(buf, &uuid);
 
-    char str[33];
+    char str[33]; // 32 bytes for UUID without '-'
 
     // 手动拼接字符串，去掉破折号
     sprintf(str, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c",
@@ -713,7 +713,7 @@ cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, con
         return nullptr;
     }
 
-    fac->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
+    // fac->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
     return fac;
 }
 
