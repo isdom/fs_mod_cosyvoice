@@ -120,8 +120,8 @@ public:
     // wss_client;
     typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 
-    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &saveto, vfs_ext_func_t *vfs)
-    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_saveto(saveto), m_vfs(vfs) {
+    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &saveto, vfs_ext_func_t *vfs, std::function<void()> &play_audio)
+    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_saveto(saveto), m_vfs(vfs), m_play_audio(play_audio) {
         gen_uuidstr_without_dash(m_task_id);
 
         // set up access channels to only log interesting things
@@ -390,6 +390,10 @@ public:
                 }
                 if (m_cosyvoice_file) {
                     m_vfs->vfs_append_func(wav_data, num_samples, m_cosyvoice_file);
+                    if (!m_audio_played) {
+                        m_audio_played = true;
+                        m_play_audio();
+                    }
                 } else {
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "binary: can't open file_name: %s for append\n",
                                       m_saveto.c_str());
@@ -721,10 +725,12 @@ private:
     std::string m_saveto;
     vfs_ext_func_t *m_vfs;
     void *m_cosyvoice_file = nullptr;
+    bool m_audio_played = false;
+    std::function<void()> m_play_audio;
 };
 
-cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *saveto, vfs_ext_func_t *vfs) {
-    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), std::string(saveto), vfs);
+cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *saveto, vfs_ext_func_t *vfs, std::function<void()> &play_audio) {
+    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), std::string(saveto), vfs, play_audio);
     if (!fac) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateClient failed.\n");
         return nullptr;
@@ -789,7 +795,8 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
                                            const char *_voice,
                                            const char *_text,
                                            const char *_saveto,
-                                           vfs_ext_func_t *vfs) {
+                                           vfs_ext_func_t *vfs,
+                                           std::function<void()> play_audio) {
     /*
      * Gen Token REF: https://help.aliyun.com/zh/isi/getting-started/use-http-or-https-to-obtain-an-access-token
     switch_mutex_lock(g_tts_lock);
@@ -808,7 +815,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_mutex_unlock(g_tts_lock);
     */
 
-    auto *synthesizer = generateSynthesizer(_token, _appkey, _saveto, vfs);
+    auto *synthesizer = generateSynthesizer(_token, _appkey, _saveto, vfs, play_audio);
 
     if (!synthesizer) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "generateSynthesizer failed.\n");
@@ -834,20 +841,6 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     return SWITCH_STATUS_SUCCESS;
 }
 
-SWITCH_STANDARD_API(cosyvoice_concurrent_cnt_function) {
-    const uint32_t concurrent_cnt = switch_atomic_read (&cosyvoice_globals->cosyvoice_concurrent_cnt);
-    stream->write_function(stream, "%d\n", concurrent_cnt);
-    switch_event_t *event = nullptr;
-    if (switch_event_create(&event, SWITCH_EVENT_CUSTOM) == SWITCH_STATUS_SUCCESS) {
-        event->subclass_name = strdup("cosyvoice_concurrent_cnt");
-        switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Event-Subclass", event->subclass_name);
-        switch_event_add_header(event, SWITCH_STACK_BOTTOM, "CosyVoice-Concurrent-Cnt", "%d", concurrent_cnt);
-        switch_event_fire(&event);
-    }
-
-    return SWITCH_STATUS_SUCCESS;
-}
-
 static void play_cosyvoice_audio(const char *_saveto, const char *_playback_id, const char *cmd, switch_memory_pool_t *pool) {
     char *args = switch_core_sprintf(pool, "%s file={vars_playback_id=%s}%s", cmd, _playback_id, _saveto);
 
@@ -860,6 +853,20 @@ static void play_cosyvoice_audio(const char *_saveto, const char *_playback_id, 
 
     switch_api_execute("znc_uuid_play", args, nullptr, &stream);
     switch_safe_free(stream.data);
+}
+
+SWITCH_STANDARD_API(cosyvoice_concurrent_cnt_function) {
+    const uint32_t concurrent_cnt = switch_atomic_read (&cosyvoice_globals->cosyvoice_concurrent_cnt);
+    stream->write_function(stream, "%d\n", concurrent_cnt);
+    switch_event_t *event = nullptr;
+    if (switch_event_create(&event, SWITCH_EVENT_CUSTOM) == SWITCH_STATUS_SUCCESS) {
+        event->subclass_name = strdup("cosyvoice_concurrent_cnt");
+        switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Event-Subclass", event->subclass_name);
+        switch_event_add_header(event, SWITCH_STACK_BOTTOM, "CosyVoice-Concurrent-Cnt", "%d", concurrent_cnt);
+        switch_event_fire(&event);
+    }
+
+    return SWITCH_STATUS_SUCCESS;
 }
 
 #define COSYVOICE_DEBUG_SYNTAX "<on|off>"
@@ -1057,14 +1064,12 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
     if (!vfs->vfs_funcs.vfs_exist_func(_saveto)) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s !NOT! exist, gen it\n", _saveto);
 
-        if ( gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs) != SWITCH_STATUS_SUCCESS ) {
-            switch_goto_status(SWITCH_STATUS_SUCCESS, end);
-        }
+        gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs,
+                                 std::bind(play_cosyvoice_audio, _saveto, _playback_id, cmd, pool));
     } else {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s exist, just play it\n", _saveto);
+        play_cosyvoice_audio(_saveto, _playback_id, cmd, pool);
     }
-
-    play_cosyvoice_audio(_saveto, _playback_id, cmd, pool);
 
     end:
     switch_core_destroy_memory_pool(&pool);
