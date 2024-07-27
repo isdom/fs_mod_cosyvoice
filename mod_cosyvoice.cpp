@@ -41,6 +41,15 @@ typedef struct {
     vfs_tell_func_t vfs_tell_func;
 } vfs_func_t;
 
+typedef void (*vfs_append_func_t) (const void *ptr, size_t count, void *user_data);
+typedef void (*vfs_stream_completed_func_t) (void *user_data);
+
+typedef struct {
+    vfs_func_t vfs_funcs;
+    vfs_append_func_t vfs_append_func;
+    vfs_stream_completed_func_t vfs_stream_completed_func;
+} vfs_ext_func_t;
+
 template<typename T>
 class WebsocketClient;
 
@@ -111,7 +120,7 @@ public:
     // wss_client;
     typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 
-    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &saveto, vfs_func_t *vfs)
+    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &saveto, vfs_ext_func_t *vfs)
     : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_saveto(saveto), m_vfs(vfs) {
         gen_uuidstr_without_dash(m_task_id);
 
@@ -352,6 +361,8 @@ public:
                     }
                      */
                     // onSentenceEnd(m_asr_ctx, asr_result["text"]);
+                    m_vfs->vfs_stream_completed_func(m_cosyvoice_file);
+
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisCompleted event\n");
                     }
@@ -374,11 +385,11 @@ public:
                 switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "binary: file_name: %s, data.size() %d, vfs: %p\n",
                                   m_saveto.c_str(), num_samples, m_vfs);
 
-                void *tts_file = m_vfs->vfs_open_func(m_saveto.c_str());
-                if (tts_file) {
-                    m_vfs->vfs_seek_func(0, SEEK_END, tts_file);
-                    m_vfs->vfs_write_func(wav_data, num_samples, tts_file);
-                    m_vfs->vfs_close_func(tts_file);
+                if (!m_cosyvoice_file) {
+                    m_cosyvoice_file = m_vfs->vfs_funcs.vfs_open_func(m_saveto.c_str());
+                }
+                if (m_cosyvoice_file) {
+                    m_vfs->vfs_append_func(wav_data, num_samples, m_cosyvoice_file);
                 } else {
                     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "binary: can't open file_name: %s for append\n",
                                       m_saveto.c_str());
@@ -708,10 +719,11 @@ private:
     std::string m_appkey;
     std::string m_token;
     std::string m_saveto;
-    vfs_func_t *m_vfs;
+    vfs_ext_func_t *m_vfs;
+    void *m_cosyvoice_file = nullptr;
 };
 
-cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *saveto, vfs_func_t *vfs) {
+cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *saveto, vfs_ext_func_t *vfs) {
     auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), std::string(saveto), vfs);
     if (!fac) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateClient failed.\n");
@@ -777,7 +789,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
                                            const char *_voice,
                                            const char *_text,
                                            const char *_saveto,
-                                           vfs_func_t *vfs_funcs) {
+                                           vfs_ext_func_t *vfs) {
     /*
      * Gen Token REF: https://help.aliyun.com/zh/isi/getting-started/use-http-or-https-to-obtain-an-access-token
     switch_mutex_lock(g_tts_lock);
@@ -796,7 +808,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_mutex_unlock(g_tts_lock);
     */
 
-    auto *synthesizer = generateSynthesizer(_token, _appkey, _saveto, vfs_funcs);
+    auto *synthesizer = generateSynthesizer(_token, _appkey, _saveto, vfs);
 
     if (!synthesizer) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "generateSynthesizer failed.\n");
@@ -963,7 +975,7 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
     char *_url = nullptr;
     char *_voice = nullptr;
     char *_playback_id = nullptr;
-    vfs_func_t *vfs_funcs;
+    vfs_ext_func_t *vfs;
 
     switch_memory_pool_t *pool;
     switch_core_new_memory_pool(&pool);
@@ -1033,19 +1045,19 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
             switch_goto_status(SWITCH_STATUS_SUCCESS, end);
         } else {
             switch_channel_t *channel = switch_core_session_get_channel(ses);
-            vfs_funcs = (vfs_func_t*)switch_channel_get_private(channel, "vfs_mem");
+            vfs = (vfs_ext_func_t*)switch_channel_get_private(channel, "vfs_mem");
             switch_core_session_rwunlock(ses);
-            if (!vfs_funcs) {
+            if (!vfs) {
                 switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "cosyvoice failed, can't found vfs_mem %s\n", argv[0]);
                 switch_goto_status(SWITCH_STATUS_SUCCESS, end);
             }
         }
     }
 
-    if (!vfs_funcs->vfs_exist_func(_saveto)) {
+    if (!vfs->vfs_funcs.vfs_exist_func(_saveto)) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s !NOT! exist, gen it\n", _saveto);
 
-        if ( gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs_funcs) != SWITCH_STATUS_SUCCESS ) {
+        if ( gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs) != SWITCH_STATUS_SUCCESS ) {
             switch_goto_status(SWITCH_STATUS_SUCCESS, end);
         }
     } else {
