@@ -177,6 +177,46 @@ public:
         return sin.str();
     }
 
+    void dump_wave_hdr() const {
+        wave_header_t wave_hdr;
+        wave_fmt_t    wave_fmt;
+        wave_data_t   wave_data;
+
+        m_vfs->vfs_funcs.vfs_read_func(&wave_hdr, sizeof(wave_hdr), m_cosyvoice_file);
+        m_vfs->vfs_funcs.vfs_read_func(&wave_fmt, sizeof(wave_fmt), m_cosyvoice_file);
+        m_vfs->vfs_funcs.vfs_read_func(&wave_data, sizeof(wave_data), m_cosyvoice_file);
+        m_vfs->vfs_funcs.vfs_seek_func(0, SEEK_SET, m_cosyvoice_file);
+
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: chunk_id: %c%c%c%c\n",
+                        wave_hdr.chunk_id[0], wave_hdr.chunk_id[1], wave_hdr.chunk_id[2], wave_hdr.chunk_id[3]);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: chunk_size: %d\n",
+                          wave_hdr.chunk_size);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: format: %c%c%c%c\n",
+                          wave_hdr.format[0], wave_hdr.format[1], wave_hdr.format[2], wave_hdr.format[3]);
+
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: subchunk1_id: %c%c%c%c\n",
+                          wave_fmt.subchunk1_id[0], wave_fmt.subchunk1_id[1], wave_fmt.subchunk1_id[2], wave_fmt.subchunk1_id[3]);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: subchunk1_size: %d\n",
+                          wave_fmt.subchunk1_size);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: audio_format: %d\n",
+                          wave_fmt.audio_format);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: num_channels: %d\n",
+                          wave_fmt.num_channels);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: sample_rate: %d\n",
+                          wave_fmt.sample_rate);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: byte_rate: %d\n",
+                          wave_fmt.byte_rate);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: block_align: %d\n",
+                          wave_fmt.block_align);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: bits_per_sample: %d\n",
+                          wave_fmt.bits_per_sample);
+
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_data: subchunk2_id: %c%c%c%c\n",
+                          wave_data.subchunk2_id[0],wave_data.subchunk2_id[1],wave_data.subchunk2_id[2],wave_data.subchunk2_id[3]);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_data: subchunk2_size: %d\n",
+                          wave_data.subchunk2_size);
+    }
+
     void on_message(websocketpp::connection_hdl hdl, message_ptr msg) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on_message: opcode = %d\n", msg->get_opcode());
 
@@ -428,47 +468,9 @@ public:
                 }
                 if (m_cosyvoice_file) {
                     m_vfs->vfs_append_func(wav_data, num_samples, m_cosyvoice_file);
-                    wave_header_t wave_hdr;
-                    wave_fmt_t    wave_fmt;
-                    wave_data_t   wave_data;
-
-                    m_vfs->vfs_funcs.vfs_read_func(&wave_hdr, sizeof(wave_hdr), m_cosyvoice_file);
-                    m_vfs->vfs_funcs.vfs_read_func(&wave_fmt, sizeof(wave_fmt), m_cosyvoice_file);
-                    m_vfs->vfs_funcs.vfs_read_func(&wave_data, sizeof(wave_data), m_cosyvoice_file);
-                    m_vfs->vfs_funcs.vfs_seek_func(0, SEEK_SET, m_cosyvoice_file);
-
-#if 0
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: chunk_id: %c%c%c%c\n",
-                                      wave_hdr.chunk_id[0], wave_hdr.chunk_id[1], wave_hdr.chunk_id[2], wave_hdr.chunk_id[3]);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: chunk_size: %d\n",
-                                      wave_hdr.chunk_size);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: format: %c%c%c%c\n",
-                                      wave_hdr.format[0], wave_hdr.format[1], wave_hdr.format[2], wave_hdr.format[3]);
-
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: subchunk1_id: %c%c%c%c\n",
-                                      wave_fmt.subchunk1_id[0], wave_fmt.subchunk1_id[1], wave_fmt.subchunk1_id[2], wave_fmt.subchunk1_id[3]);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: subchunk1_size: %d\n",
-                                      wave_fmt.subchunk1_size);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: audio_format: %d\n",
-                                      wave_fmt.audio_format);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: num_channels: %d\n",
-                                      wave_fmt.num_channels);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: sample_rate: %d\n",
-                                      wave_fmt.sample_rate);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: byte_rate: %d\n",
-                                      wave_fmt.byte_rate);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: block_align: %d\n",
-                                      wave_fmt.block_align);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: bits_per_sample: %d\n",
-                                      wave_fmt.bits_per_sample);
-
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_data: subchunk2_id: %c%c%c%c\n",
-                                      wave_data.subchunk2_id[0],wave_data.subchunk2_id[1],wave_data.subchunk2_id[2],wave_data.subchunk2_id[3]);
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_data: subchunk2_size: %d\n",
-                                      wave_data.subchunk2_size);
-#endif
                     if (!m_audio_played) {
                         m_audio_played = true;
+                        dump_wave_hdr();
                         m_play_audio();
                     }
                 } else {
