@@ -679,9 +679,10 @@ public:
             bool wait = false;
             {
                 scoped_lock guard(m_lock);
-                // If the connection has been closed, stop generating data
+                // If the connection has been closed, break while to terminate client's thread
                 if (m_done) {
-                    return;
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "waitForSynthesisCompleted: m_done is true means connection closed!\n");
+                    break;
                 }
                 // If the connection hasn't receive synthesisReady event
                 if (!m_synthesisCompleted) {
