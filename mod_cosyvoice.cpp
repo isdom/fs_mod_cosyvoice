@@ -194,13 +194,12 @@ public:
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisStarted event\n");
                     }
 
-                    if (!m_text_list.empty()) {
+                    while (!m_text_list.empty()) {
                         std::string text = m_text_list.front();
                         m_text_list.pop();
                         runSynthesis(text);
-                    } else {
-                        stopSynthesis();
                     }
+                    stopSynthesis();
 
                     return;
                 } else if (synthesis_event["header"]["name"] == "SentenceBegin") {
@@ -349,6 +348,7 @@ public:
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenceEnd event\n");
                     }
+                    /*
                     if (!m_text_list.empty()) {
                         std::string text = m_text_list.front();
                         m_text_list.pop();
@@ -356,6 +356,7 @@ public:
                     } else {
                         stopSynthesis();
                     }
+                    */
                 } else if (synthesis_event["header"]["name"] == "SynthesisCompleted") {
                     /* SynthesisCompleted 事件
                     {
