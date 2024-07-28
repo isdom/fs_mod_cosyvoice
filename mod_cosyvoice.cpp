@@ -120,8 +120,8 @@ public:
     // wss_client;
     typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 
-    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &saveto, vfs_ext_func_t *vfs, std::function<void()> &play_audio)
-    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_saveto(saveto), m_vfs(vfs), m_play_audio(play_audio) {
+    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &voice, const std::string &saveto, vfs_ext_func_t *vfs, std::function<void()> &play_audio)
+    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_voice(voice), m_saveto(saveto), m_vfs(vfs), m_play_audio(play_audio) {
         gen_uuidstr_without_dash(m_task_id);
 
         // set up access channels to only log interesting things
@@ -168,14 +168,6 @@ public:
                                       payload.c_str());
                 }
 
-                /*
-                if (m_synthesisReady) {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "thread: %s, m_synthesisReady == true, ignore successor text msg\n",
-                                      id_str.c_str());
-                    return;
-                }
-                 */
-
                 nlohmann::json synthesis_event = nlohmann::json::parse(payload);
                 if (synthesis_event["header"]["name"] == "SynthesisStarted") {
                     /* SynthesisStarted 事件
@@ -200,6 +192,8 @@ public:
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisStarted event\n");
                     }
+                    runSynthesis(m_text);
+                    stopSynthesis();
                     return;
                 } else if (synthesis_event["header"]["name"] == "SentenceBegin") {
                     /* SentenceBegin 事件
@@ -363,16 +357,22 @@ public:
                     // onSentenceEnd(m_asr_ctx, asr_result["text"]);
                     m_vfs->vfs_stream_completed_func(m_cosyvoice_file);
 
+                    {
+                        scoped_lock guard(m_lock);
+                        m_synthesisCompleted = true;
+                    }
+
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisCompleted event\n");
                     }
-                    websocketpp::lib::error_code ec;
 
-                    m_client.close(hdl, websocketpp::close::status::going_away, "", ec);
-
-                    if (ec) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Error closing connection: %s\n",
-                                          ec.message().c_str());
+                    {
+                        websocketpp::lib::error_code ec;
+                        m_client.close(hdl, websocketpp::close::status::going_away, "", ec);
+                        if (ec) {
+                            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Error closing connection: %s\n",
+                                              ec.message().c_str());
+                        }
                     }
                 }
                 break;
@@ -410,11 +410,10 @@ public:
         }
     }
 
-    // This method will block until the connection is complete
-    int startSynthesis(const std::string &uri, const std::string &voice) {
+    int startConnect(const std::string &uri, const std::string &text) {
+        m_text = text;
         if (cosyvoice_globals->_debug) {
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "StartSynthesis: %s voice: %s\n", uri.c_str(),
-                              voice.c_str());
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startConnect: %s\n", uri.c_str());
         }
 
         {
@@ -438,11 +437,12 @@ public:
 
         // Create a thread to run the ASIO io_service event loop
         m_thread.reset(new websocketpp::lib::thread(&websocketpp::client<T>::run, &m_client));
+        return 0;
+    }
 
-        if (cosyvoice_globals->_debug) {
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send cosyvoice first msg\n");
-        }
-
+    // This method will block until the connection is complete
+    int startSynthesis(const std::string &voice) {
+        /*
         // first message
         bool wait = false;
         while (true) {
@@ -466,7 +466,11 @@ public:
                 continue;
             }
         }
+         */
 
+        if (cosyvoice_globals->_debug) {
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send startSynthesis msg, voice: %s.\n", voice.c_str());
+        }
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
@@ -531,6 +535,7 @@ public:
             }
         }
 
+        /*
         {
             while (true) {
                 bool wait = false;
@@ -559,6 +564,7 @@ public:
                 }
             }
         }
+         */
 
         return 0;
     }
@@ -664,10 +670,40 @@ public:
                 }
             }
         }
-        m_client.stop_perpetual();
-        m_thread->join();
         // onChannelClosed(m_asr_ctx);
         return 0;
+    }
+
+    void waitForSynthesisCompleted() {
+        while (true) {
+            bool wait = false;
+            {
+                scoped_lock guard(m_lock);
+                // If the connection has been closed, stop generating data
+                if (m_done) {
+                    return;
+                }
+                // If the connection hasn't receive synthesisReady event
+                if (!m_synthesisCompleted) {
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "waitForSynthesisCompleted: m_synthesisCompleted is false\n");
+                    wait = true;
+                } else {
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "waitForSynthesisCompleted: m_synthesisCompleted is true\n");
+                    break;
+                }
+            }
+
+            if (wait) {
+                WaitABit(1000L);
+                if (cosyvoice_globals->_debug) {
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "waitForSynthesisCompleted: wait for SynthesisCompleted event\n");
+                }
+                continue;
+            }
+        }
+
+        m_client.stop_perpetual();
+        m_thread->join();
     }
 
     // The open handler will signal that we are ready to start sending data
@@ -681,6 +717,7 @@ public:
             m_open = true;
         }
         // onTranscriptionStarted(m_asr_ctx);
+        startSynthesis(m_voice);
     }
 
     // The close handler will signal that we should stop sending data
@@ -720,8 +757,11 @@ private:
     bool m_open;
     bool m_done;
     bool m_synthesisReady = false;
+    bool m_synthesisCompleted = false;
     std::string m_appkey;
     std::string m_token;
+    std::string m_voice;
+    std::string m_text;
     std::string m_saveto;
     vfs_ext_func_t *m_vfs;
     void *m_cosyvoice_file = nullptr;
@@ -729,8 +769,9 @@ private:
     std::function<void()> m_play_audio;
 };
 
-cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *saveto, vfs_ext_func_t *vfs, std::function<void()> &play_audio) {
-    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), std::string(saveto), vfs, play_audio);
+cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *voice, const char *saveto,
+                                      vfs_ext_func_t *vfs, std::function<void()> &play_audio) {
+    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), std::string(voice), std::string(saveto), vfs, play_audio);
     if (!fac) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateClient failed.\n");
         return nullptr;
@@ -815,21 +856,21 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_mutex_unlock(g_tts_lock);
     */
 
-    auto *synthesizer = generateSynthesizer(_token, _appkey, _saveto, vfs, play_audio);
+    auto *synthesizer = generateSynthesizer(_token, _appkey, _voice, _saveto, vfs, play_audio);
 
     if (!synthesizer) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "generateSynthesizer failed.\n");
         return SWITCH_STATUS_FALSE;
     }
 
-    synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
-
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    synthesizer->runSynthesis(std::string(_text));
-
-    synthesizer->stopSynthesis();
+    synthesizer->startConnect(std::string(_url),  std::string(_text));
+    //synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
+    //synthesizer->runSynthesis(std::string(_text));
+    //synthesizer->stopSynthesis();
+    synthesizer->waitForSynthesisCompleted();
 
     // decrement aliasr concurrent count
     switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
