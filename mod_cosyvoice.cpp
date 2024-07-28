@@ -256,11 +256,7 @@ public:
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisStarted event\n");
                     }
 
-                    while (!m_text_list.empty()) {
-                        std::string text = m_text_list.front();
-                        m_text_list.pop();
-                        runSynthesis(text);
-                    }
+                    runSynthesis(m_text);
                     stopSynthesis();
 
                     return;
@@ -433,7 +429,6 @@ public:
                     }
                      */
                     // onSentenceEnd(m_asr_ctx, asr_result["text"]);
-                    m_vfs->vfs_stream_completed_func(m_file);
 
                     {
                         scoped_lock guard(m_lock);
@@ -485,8 +480,8 @@ public:
         }
     }
 
-    int startConnect(const std::string &uri, const std::queue<std::string> &text_list) {
-        m_text_list = text_list;
+    int startConnect(const std::string &uri, const std::string &text) {
+        m_text = text;
         if (cosyvoice_globals->_debug) {
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startConnect: %s\n", uri.c_str());
         }
@@ -837,7 +832,7 @@ private:
     std::string m_appkey;
     std::string m_token;
     std::string m_voice;
-    std::queue<std::string>  m_text_list;
+    std::string m_text;
     void *m_file;
     vfs_ext_func_t *m_vfs;
     bool m_audio_played = false;
@@ -875,7 +870,7 @@ SWITCH_MODULE_DEFINITION(mod_cosyvoice, mod_cosyvoice_load, mod_cosyvoice_shutdo
  * 根据AccessKey ID和AccessKey Secret重新生成一个token，
  * 并获取其有效期时间戳
  */
- /*
+/*
 int generateToken(const char *akId, const char *akSecret, char **token, long *expireTime) {
     NlsToken nlsTokenRequest;
     nlsTokenRequest.setAccessKeyId(akId);
@@ -903,7 +898,9 @@ int generateToken(const char *akId, const char *akSecret, char **token, long *ex
     *expireTime = nlsTokenRequest.getExpireTime();
     return 0;
 }
-  */
+*/
+
+void do_nothing() {}
 
 static switch_status_t gen_cosyvoice_audio(const char *_token,
                                            const char *_appkey,
@@ -958,16 +955,6 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         vfs->vfs_append_func(&wave_data, sizeof(wave_data), cosyvoice_file);
     }
 
-    auto *synthesizer = generateSynthesizer(_token, _appkey, _voice, cosyvoice_file, vfs, play_audio);
-
-    if (!synthesizer) {
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "generateSynthesizer failed.\n");
-        return SWITCH_STATUS_FALSE;
-    }
-
-    // increment aliasr concurrent count
-    switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
-
     int idx = 0;
     std::queue<std::string> text_list;
     const char *begin = _text;
@@ -982,20 +969,48 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     text_list.emplace(begin);
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "[%d]: %s\n", idx++, begin);
 
-    synthesizer->startConnect(std::string(_url),  text_list);
+    bool has_play_audio = false;
+    while (!text_list.empty()) {
+        std::string text = text_list.front();
+        text_list.pop();
 
-    //synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
-    //synthesizer->runSynthesis(std::string(_text));
-    //synthesizer->stopSynthesis();
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer: %s\n", text.c_str());
 
-    synthesizer->waitForSynthesisCompleted();
+        cosyvoice_client *synthesizer = nullptr;
 
-    // decrement aliasr concurrent count
-    switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+        if (has_play_audio) {
+            std::function<void()> dummy = do_nothing;
+            synthesizer = generateSynthesizer(_token, _appkey, _voice, cosyvoice_file, vfs, dummy);
+        } else {
+            has_play_audio = true;
+            synthesizer = generateSynthesizer(_token, _appkey, _voice, cosyvoice_file, vfs, play_audio);
+        }
 
-    delete synthesizer;
+        //if (!synthesizer) {
+        //    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "generateSynthesizer failed.\n");
+        //    return SWITCH_STATUS_FALSE;
+        //}
 
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
+        // increment aliasr concurrent count
+        switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+
+        synthesizer->startConnect(std::string(_url), text);
+
+        //synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
+        //synthesizer->runSynthesis(std::string(_text));
+        //synthesizer->stopSynthesis();
+
+        synthesizer->waitForSynthesisCompleted();
+
+        // decrement aliasr concurrent count
+        switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+
+        delete synthesizer;
+
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
+    }
+    vfs->vfs_stream_completed_func(cosyvoice_file);
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer All text\n");
 
     return SWITCH_STATUS_SUCCESS;
 }
