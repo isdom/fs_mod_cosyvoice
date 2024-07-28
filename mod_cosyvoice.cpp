@@ -189,11 +189,19 @@ public:
                         scoped_lock guard(m_lock);
                         m_synthesisReady = true;
                     }
+
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisStarted event\n");
                     }
-                    runSynthesis(m_text);
-                    stopSynthesis();
+
+                    if (!m_text_list.empty()) {
+                        std::string text = m_text_list.front();
+                        m_text_list.pop();
+                        runSynthesis(text);
+                    } else {
+                        stopSynthesis();
+                    }
+
                     return;
                 } else if (synthesis_event["header"]["name"] == "SentenceBegin") {
                     /* SentenceBegin 事件
@@ -341,6 +349,13 @@ public:
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenceEnd event\n");
                     }
+                    if (!m_text_list.empty()) {
+                        std::string text = m_text_list.front();
+                        m_text_list.pop();
+                        runSynthesis(text);
+                    } else {
+                        stopSynthesis();
+                    }
                 } else if (synthesis_event["header"]["name"] == "SynthesisCompleted") {
                     /* SynthesisCompleted 事件
                     {
@@ -410,8 +425,8 @@ public:
         }
     }
 
-    int startConnect(const std::string &uri, const std::string &text) {
-        m_text = text;
+    int startConnect(const std::string &uri, const std::queue<std::string> &text_list) {
+        m_text_list = text_list;
         if (cosyvoice_globals->_debug) {
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startConnect: %s\n", uri.c_str());
         }
@@ -762,7 +777,7 @@ private:
     std::string m_appkey;
     std::string m_token;
     std::string m_voice;
-    std::string m_text;
+    std::queue<std::string>  m_text_list;
     std::string m_saveto;
     vfs_ext_func_t *m_vfs;
     void *m_cosyvoice_file = nullptr;
@@ -867,10 +882,26 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     // increment aliasr concurrent count
     switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-    synthesizer->startConnect(std::string(_url),  std::string(_text));
+    int idx = 0;
+    std::queue<std::string> text_list;
+    const char *begin = _text;
+    const char *p = strchr(begin, '#');
+    while (p) {
+        *(char*)p = '\0';
+        text_list.emplace(begin);
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "[%d]: %s\n", idx++, begin);
+        begin = p+1;
+        p = strchr(begin, '#');
+    }
+    text_list.emplace(begin);
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "[%d]: %s\n", idx++, begin);
+
+    synthesizer->startConnect(std::string(_url),  text_list);
+
     //synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
     //synthesizer->runSynthesis(std::string(_text));
     //synthesizer->stopSynthesis();
+
     synthesizer->waitForSynthesisCompleted();
 
     // decrement aliasr concurrent count
