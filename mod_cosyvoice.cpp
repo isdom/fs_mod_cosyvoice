@@ -78,6 +78,28 @@ void gen_uuidstr_without_dash(std::string &str_uuid) {
     str_uuid = str;
 }
 
+typedef struct {
+    char          ChunkID[4]; //内容为"RIFF"
+    unsigned long ChunkSize;  //存储文件的字节数（不包含ChunkID和ChunkSize这8个字节）
+    char          Format[4];  //内容为"WAVE“
+} WAVE_HEADER;
+
+typedef struct {
+    char           Subchunk1ID[4]; //内容为"fmt"
+    unsigned long  Subchunk1Size;  //存储该子块的字节数（不含前面的Subchunk1ID和Subchunk1Size这8个字节）
+    unsigned short AudioFormat;    //存储音频文件的编码格式，例如若为PCM则其存储值为1。
+    unsigned short NumChannels;    //声道数，单声道(Mono)值为1，双声道(Stereo)值为2，等等
+    unsigned long  SampleRate;     //采样率，如8k，44.1k等
+    unsigned long  ByteRate;       //每秒存储的bit数，其值 = SampleRate * NumChannels * BitsPerSample / 8
+    unsigned short BlockAlign;     //块对齐大小，其值 = NumChannels * BitsPerSample / 8
+    unsigned short BitsPerSample;  //每个采样点的bit数，一般为8,16,32等。
+} WAVE_FMT;
+
+typedef struct {
+    char          Subchunk2ID[4]; //内容为“data”
+    unsigned long Subchunk2Size;  //接下来的正式的数据部分的字节数，其值 = NumSamples * NumChannels * BitsPerSample / 8
+} WAVE_DATA;
+
 /**
  * Define a semi-cross platform helper method that waits/sleeps for a bit.
  */
@@ -403,6 +425,8 @@ public:
 
                 if (!m_cosyvoice_file) {
                     m_cosyvoice_file = m_vfs->vfs_funcs.vfs_open_func(m_saveto.c_str());
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "try parse wav hdr: sizeof(WAVE_HEADER): %lu, sizeof(WAVE_FMT): %lu, sizeof(WAVE_DATA): %lu\n",
+                                      sizeof(WAVE_HEADER), sizeof(WAVE_FMT), sizeof(WAVE_DATA));
                 }
                 if (m_cosyvoice_file) {
                     m_vfs->vfs_append_func(wav_data, num_samples, m_cosyvoice_file);
