@@ -182,18 +182,18 @@ public:
         wave_fmt_t    wave_fmt;
         wave_data_t   wave_data;
 
-        m_vfs->vfs_funcs.vfs_read_func(&wave_hdr, sizeof(wave_hdr), m_cosyvoice_file);
+        //m_vfs->vfs_funcs.vfs_read_func(&wave_hdr, sizeof(wave_hdr), m_cosyvoice_file);
         // m_vfs->vfs_funcs.vfs_read_func(&wave_fmt, sizeof(wave_fmt), m_cosyvoice_file);
         // m_vfs->vfs_funcs.vfs_read_func(&wave_data, sizeof(wave_data), m_cosyvoice_file);
         // m_vfs->vfs_funcs.vfs_seek_func(0, SEEK_SET, m_cosyvoice_file);
-
+#if 0
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: chunk_id: %c%c%c%c\n",
                         wave_hdr.chunk_id[0], wave_hdr.chunk_id[1], wave_hdr.chunk_id[2], wave_hdr.chunk_id[3]);
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: chunk_size: %d\n",
                           wave_hdr.chunk_size);
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_hdr: format: %c%c%c%c\n",
                           wave_hdr.format[0], wave_hdr.format[1], wave_hdr.format[2], wave_hdr.format[3]);
-#if 0
+
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: subchunk1_id: %c%c%c%c\n",
                           wave_fmt.subchunk1_id[0], wave_fmt.subchunk1_id[1], wave_fmt.subchunk1_id[2], wave_fmt.subchunk1_id[3]);
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_fmt: subchunk1_size: %d\n",
@@ -215,7 +215,7 @@ public:
                           wave_data.subchunk2_id[0],wave_data.subchunk2_id[1],wave_data.subchunk2_id[2],wave_data.subchunk2_id[3]);
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_data: subchunk2_size: %d\n",
                           wave_data.subchunk2_size);
-#endif        
+#endif
     }
 
     void on_message(websocketpp::connection_hdl hdl, message_ptr msg) {
