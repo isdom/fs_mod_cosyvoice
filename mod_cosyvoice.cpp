@@ -838,8 +838,8 @@ private:
     std::string m_token;
     std::string m_voice;
     std::queue<std::string>  m_text_list;
-    vfs_ext_func_t *m_vfs;
     void *m_file;
+    vfs_ext_func_t *m_vfs;
     bool m_audio_played = false;
     std::function<void()> m_play_audio;
 };
