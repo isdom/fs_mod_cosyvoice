@@ -142,8 +142,8 @@ public:
     // wss_client;
     typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 
-    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &voice, const std::string &saveto, vfs_ext_func_t *vfs, std::function<void()> &play_audio)
-    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_voice(voice), m_saveto(saveto), m_vfs(vfs), m_play_audio(play_audio) {
+    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &voice, void *file, vfs_ext_func_t *vfs, std::function<void()> &play_audio)
+    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_voice(voice), m_file(file), m_vfs(vfs), m_play_audio(play_audio) {
         gen_uuidstr_without_dash(m_task_id);
 
         // set up access channels to only log interesting things
@@ -176,7 +176,7 @@ public:
         sin << id;
         return sin.str();
     }
-
+#if 0
     void dump_wave_hdr() const {
         wave_header_t wave_hdr;
         wave_fmt_t    wave_fmt;
@@ -216,7 +216,7 @@ public:
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "wave_data: subchunk2_size: %d\n",
                           wave_data.subchunk2_size);
     }
-
+#endif
     void on_message(websocketpp::connection_hdl hdl, message_ptr msg) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on_message: opcode = %d\n", msg->get_opcode());
 
@@ -433,7 +433,7 @@ public:
                     }
                      */
                     // onSentenceEnd(m_asr_ctx, asr_result["text"]);
-                    m_vfs->vfs_stream_completed_func(m_cosyvoice_file);
+                    m_vfs->vfs_stream_completed_func(m_file);
 
                     {
                         scoped_lock guard(m_lock);
@@ -460,22 +460,18 @@ public:
                 const auto* wav_data = static_cast<const char*>(payload.data());
                 int32_t num_samples = payload.size();
 
-                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "binary: file_name: %s, data.size() %d, vfs: %p\n",
-                                  m_saveto.c_str(), num_samples, m_vfs);
+                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "binary: data.size() %d, vfs: %p\n",
+                                  num_samples, m_vfs);
 
-                if (!m_cosyvoice_file) {
-                    m_cosyvoice_file = m_vfs->vfs_funcs.vfs_open_func(m_saveto.c_str());
-                }
-                if (m_cosyvoice_file) {
-                    m_vfs->vfs_append_func(wav_data, num_samples, m_cosyvoice_file);
+                if (m_file) {
+                    m_vfs->vfs_append_func(wav_data, num_samples, m_file);
                     if (!m_audio_played) {
                         m_audio_played = true;
-                        dump_wave_hdr();
+                        // dump_wave_hdr();
                         m_play_audio();
                     }
                 } else {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "binary: can't open file_name: %s for append\n",
-                                      m_saveto.c_str());
+                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "binary: can't open file_name: for append\n");
                 }
 
                 if (cosyvoice_globals->_debug) {
@@ -589,7 +585,7 @@ public:
                                }},
                     {"payload", {
                                        {"voice", voice},
-                                       {"format", "wav"},
+                                       {"format", /*"wav"*/ "pcm"},
                                        {"sample_rate", 16000},
                                        {"volume", 100},
                                        {"speech_rate", 60},
@@ -842,16 +838,15 @@ private:
     std::string m_token;
     std::string m_voice;
     std::queue<std::string>  m_text_list;
-    std::string m_saveto;
     vfs_ext_func_t *m_vfs;
-    void *m_cosyvoice_file = nullptr;
+    void *m_file;
     bool m_audio_played = false;
     std::function<void()> m_play_audio;
 };
 
-cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *voice, const char *saveto,
+cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *voice, void *file,
                                       vfs_ext_func_t *vfs, std::function<void()> &play_audio) {
-    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), std::string(voice), std::string(saveto), vfs, play_audio);
+    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), std::string(voice), file, vfs, play_audio);
     if (!fac) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateClient failed.\n");
         return nullptr;
@@ -936,7 +931,34 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_mutex_unlock(g_tts_lock);
     */
 
-    auto *synthesizer = generateSynthesizer(_token, _appkey, _voice, _saveto, vfs, play_audio);
+    void *cosyvoice_file = vfs->vfs_funcs.vfs_open_func(_saveto);
+    if (cosyvoice_file) {
+        wave_header_t wave_hdr = {
+                {'R', 'I', 'F', 'F'},
+                2147483583,
+                {'W', 'A', 'V', 'E'},
+        };
+        wave_fmt_t wave_fmt = {
+                {'f', 'm', 't', ' '},
+                16,
+                1,
+                1,
+                16000,
+                32000,
+                2,
+                16
+        };
+        wave_data_t wave_data = {
+                {'d', 'a', 't', 'a'},
+                2147483547
+        };
+
+        vfs->vfs_append_func(&wave_hdr, sizeof(wave_hdr), cosyvoice_file);
+        vfs->vfs_append_func(&wave_fmt, sizeof(wave_fmt), cosyvoice_file);
+        vfs->vfs_append_func(&wave_data, sizeof(wave_data), cosyvoice_file);
+    }
+
+    auto *synthesizer = generateSynthesizer(_token, _appkey, _voice, cosyvoice_file, vfs, play_audio);
 
     if (!synthesizer) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "generateSynthesizer failed.\n");
