@@ -5,6 +5,7 @@
 
 #define ENABLE_WSS 0
 
+#include <utility>
 #include <websocketpp/client.hpp>
 #include <websocketpp/common/thread.hpp>
 #include <websocketpp/config/asio_client.hpp>
@@ -142,8 +143,8 @@ public:
     // wss_client;
     typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 
-    WebsocketClient(const std::string &token, const std::string &appkey, const std::string &voice, void *file, vfs_ext_func_t *vfs, std::function<void()> &play_audio)
-    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_voice(voice), m_file(file), m_vfs(vfs), m_play_audio(play_audio) {
+    WebsocketClient(const std::string &token, const std::string &appkey, void *file, vfs_ext_func_t *vfs, std::function<void()> &play_audio)
+    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_file(file), m_vfs(vfs), m_play_audio(play_audio) {
         gen_uuidstr_without_dash(m_task_id);
 
         // set up access channels to only log interesting things
@@ -511,35 +512,9 @@ public:
     }
 
     // This method will block until the connection is complete
-    int startSynthesis(const std::string &voice) {
-        /*
-        // first message
-        bool wait = false;
-        while (true) {
-            {
-                scoped_lock guard(m_lock);
-                // If the connection has been closed, stop generating data
-                if (m_done) {
-                    return -1;
-                }
-                // If the connection hasn't been opened yet wait a bit and retry
-                if (!m_open) {
-                    wait = true;
-                } else {
-                    break;
-                }
-            }
-
-            if (wait) {
-                // LOG(INFO) << "wait.." << m_open;
-                WaitABit(1000L);
-                continue;
-            }
-        }
-         */
-
+    int startSynthesis() {
         if (cosyvoice_globals->_debug) {
-            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send startSynthesis msg, voice: %s.\n", voice.c_str());
+            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "start send startSynthesis msg\n");
         }
         {
             std::string message_id;
@@ -579,16 +554,19 @@ public:
                                        {"appkey", m_appkey}
                                }},
                     {"payload", {
-                                       {"voice", voice},
-                                       {"format", /*"wav"*/ "pcm"},
+                                       // {"voice", voice},
+                                       {"format", "pcm"},
                                        {"sample_rate", 16000},
-                                       {"volume", 100},
-                                       {"speech_rate", 60},
-                                       {"pitch_rate", 0},
+                                       //{"volume", 100},
+                                       //{"speech_rate", 60},
+                                       //{"pitch_rate", 0},
                                        {"enable_subtitle", true}
                                }}
             };
 #endif
+            if (m_on_start_synthesis) {
+                m_on_start_synthesis(json_startSynthesis["payload"]);
+            }
             std::string str_startSynthesis = json_startSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: send startSynthesis msg, detail: %s\n",
                               str_startSynthesis.c_str());
@@ -788,7 +766,7 @@ public:
             m_open = true;
         }
         // onTranscriptionStarted(m_asr_ctx);
-        startSynthesis(m_voice);
+        startSynthesis();
     }
 
     // The close handler will signal that we should stop sending data
@@ -820,6 +798,7 @@ public:
     websocketpp::client<T> m_client;
     websocketpp::lib::shared_ptr<websocketpp::lib::thread> m_thread;
 
+    typedef std::function<void(nlohmann::json &)> on_start_synthesis_t;
 private:
 
     websocketpp::connection_hdl m_hdl;
@@ -831,17 +810,21 @@ private:
     bool m_synthesisCompleted = false;
     std::string m_appkey;
     std::string m_token;
-    std::string m_voice;
     std::string m_text;
     void *m_file;
     vfs_ext_func_t *m_vfs;
     bool m_audio_played = false;
     std::function<void()> m_play_audio;
+    on_start_synthesis_t m_on_start_synthesis;
+public:
+    void on_start_synthesis(const on_start_synthesis_t &on_start_synthesis) {
+        m_on_start_synthesis = std::move(on_start_synthesis);
+    }
 };
 
-cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, const char *voice, void *file,
+cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, void *file,
                                       vfs_ext_func_t *vfs, std::function<void()> &play_audio) {
-    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), std::string(voice), file, vfs, play_audio);
+    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), file, vfs, play_audio);
     if (!fac) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateClient failed.\n");
         return nullptr;
@@ -905,7 +888,7 @@ void do_nothing() {}
 static switch_status_t gen_cosyvoice_audio(const char *_token,
                                            const char *_appkey,
                                            const char *_url,
-                                           const char *_voice,
+                                           const cosyvoice_client::on_start_synthesis_t &on_start_synthesis,
                                            const char *_text,
                                            const char *_saveto,
                                            vfs_ext_func_t *vfs,
@@ -980,10 +963,12 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
         if (has_play_audio) {
             std::function<void()> dummy = do_nothing;
-            synthesizer = generateSynthesizer(_token, _appkey, _voice, cosyvoice_file, vfs, dummy);
+            synthesizer = generateSynthesizer(_token, _appkey, cosyvoice_file, vfs, dummy);
+            synthesizer->on_start_synthesis(on_start_synthesis);
         } else {
             has_play_audio = true;
-            synthesizer = generateSynthesizer(_token, _appkey, _voice, cosyvoice_file, vfs, play_audio);
+            synthesizer = generateSynthesizer(_token, _appkey, cosyvoice_file, vfs, play_audio);
+            synthesizer->on_start_synthesis(on_start_synthesis);
         }
 
         //if (!synthesizer) {
@@ -1140,7 +1125,7 @@ static void ues_to_utf8(std::string &ues) {
 
 #define MAX_API_ARGC 20
 
-// uuid_cosyvoice <uuid> text=XXXXX saveto=<path> token=<token> appkey=<key> url=<url> playback_id=<id> voice=<voice>
+// uuid_cosyvoice <uuid> text=XXXXX saveto=<path> token=<token> appkey=<key> url=<url> playback_id=<id> voice=<voice> volume=<volume> speech_rate=<speech_rate> pitch_rate=<pitch_rate>
 SWITCH_STANDARD_API(uuid_cosyvoice_function) {
     if (zstr(cmd)) {
         stream->write_function(stream, "uuid_cosyvoice: parameter missing.\n");
@@ -1155,6 +1140,9 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
     char *_appkey = nullptr;
     char *_url = nullptr;
     char *_voice = nullptr;
+    char *_volume = nullptr;
+    char *_speech_rate = nullptr;
+    char *_pitch_rate = nullptr;
     char *_playback_id = nullptr;
     vfs_ext_func_t *vfs;
 
@@ -1211,6 +1199,18 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
                     _url = val;
                     continue;
                 }
+                if (!strcasecmp(var, "volume")) {
+                    _volume = val;
+                    continue;
+                }
+                if (!strcasecmp(var, "speech_rate")) {
+                    _speech_rate = val;
+                    continue;
+                }
+                if (!strcasecmp(var, "pitch_rate")) {
+                    _pitch_rate = val;
+                    continue;
+                }
                 if (!strcasecmp(var, "playback_id")) {
                     _playback_id = val;
                     continue;
@@ -1238,8 +1238,28 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
     if (!vfs->vfs_funcs.vfs_exist_func(_saveto)) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s !NOT! exist, gen it\n", _saveto);
 
-        gen_cosyvoice_audio(_token, _appkey, _url, _voice, _text,  _saveto, vfs,
-                                 std::bind(play_cosyvoice_audio, _saveto, _playback_id, cmd, pool));
+        gen_cosyvoice_audio(_token,
+                            _appkey,
+                            _url,
+                            [&_voice, &_pitch_rate, &_speech_rate, &_volume](nlohmann::json &playload) {
+                                if (_voice) {
+                                    playload["voice"] = _voice;
+                                }
+                                if (_volume) {
+                                    playload["volume"] = atoi(_volume);
+                                }
+                                if (_speech_rate) {
+                                    playload["speech_rate"] = atoi(_speech_rate);
+                                }
+                                if (_pitch_rate) {
+                                    playload["pitch_rate"] = atoi(_pitch_rate);
+                                }
+                            },
+                            _text,
+                            _saveto,
+                            vfs,
+
+                            std::bind(play_cosyvoice_audio, _saveto, _playback_id, cmd, pool));
     } else {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s exist, just play it\n", _saveto);
         play_cosyvoice_audio(_saveto, _playback_id, cmd, pool);
