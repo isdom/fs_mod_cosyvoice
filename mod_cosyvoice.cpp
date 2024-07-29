@@ -143,8 +143,8 @@ public:
     // wss_client;
     typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 
-    WebsocketClient(const std::string &token, const std::string &appkey, void *file, vfs_ext_func_t *vfs, std::function<void()> &play_audio)
-    : m_open(false), m_done(false), m_appkey(appkey), m_token(token), m_file(file), m_vfs(vfs), m_play_audio(play_audio) {
+    WebsocketClient(const std::string &token, const std::string &appkey)
+    : m_open(false), m_done(false), m_appkey(appkey), m_token(token) {
         gen_uuidstr_without_dash(m_task_id);
 
         // set up access channels to only log interesting things
@@ -444,20 +444,8 @@ public:
             }
             case websocketpp::frame::opcode::binary: {
                 // recived binary data
-                const auto* wav_data = static_cast<const char*>(payload.data());
-                int32_t num_samples = payload.size();
-
-                switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "binary: data.size() %d, vfs: %p\n",
-                                  num_samples, m_vfs);
-
-                if (m_file) {
-                    m_vfs->vfs_append_func(wav_data, num_samples, m_file);
-                    if (!m_audio_played) {
-                        m_audio_played = true;
-                        m_play_audio();
-                    }
-                } else {
-                    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "binary: can't open file_name: for append\n");
+                if (m_on_binary_data) {
+                    m_on_binary_data(reinterpret_cast<const uint8_t *>(payload.data()), (int32_t)payload.size());
                 }
 
                 if (cosyvoice_globals->_debug) {
@@ -758,6 +746,7 @@ public:
     websocketpp::lib::shared_ptr<websocketpp::lib::thread> m_thread;
 
     typedef std::function<void(nlohmann::json &)> on_synthesis_cmd_t;
+    typedef std::function<void(const uint8_t*, int32_t)> on_binary_data_t;
 private:
 
     websocketpp::connection_hdl m_hdl;
@@ -769,12 +758,9 @@ private:
     bool m_synthesisCompleted = false;
     std::string m_appkey;
     std::string m_token;
-    void *m_file;
-    vfs_ext_func_t *m_vfs;
-    bool m_audio_played = false;
-    std::function<void()> m_play_audio;
     on_synthesis_cmd_t m_on_start_synthesis;
     on_synthesis_cmd_t m_on_run_synthesis;
+    on_binary_data_t   m_on_binary_data;
 public:
     void on_start_synthesis(const on_synthesis_cmd_t &on_start_synthesis) {
         m_on_start_synthesis = on_start_synthesis;
@@ -782,11 +768,13 @@ public:
     void on_run_synthesis(const on_synthesis_cmd_t &on_run_synthesis) {
         m_on_run_synthesis = on_run_synthesis;
     }
+    void on_binary_data(const on_binary_data_t &on_binary_data) {
+        m_on_binary_data = on_binary_data;
+    }
 };
 
-cosyvoice_client *generateSynthesizer(const char *token, const char *appkey, void *file,
-                                      vfs_ext_func_t *vfs, std::function<void()> &play_audio) {
-    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey), file, vfs, play_audio);
+cosyvoice_client *generateSynthesizer(const char *token, const char *appkey) {
+    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey));
     if (!fac) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateClient failed.\n");
         return nullptr;
@@ -873,8 +861,8 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_mutex_unlock(g_tts_lock);
     */
 
-    void *cosyvoice_file = vfs->vfs_funcs.vfs_open_func(_saveto);
-    if (cosyvoice_file) {
+    void *audio_file = vfs->vfs_funcs.vfs_open_func(_saveto);
+    if (audio_file) {
         wave_header_t wave_hdr = {
                 {'R', 'I', 'F', 'F'},
                 2147483583,
@@ -895,9 +883,9 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
                 2147483547
         };
 
-        vfs->vfs_append_func(&wave_hdr, sizeof(wave_hdr), cosyvoice_file);
-        vfs->vfs_append_func(&wave_fmt, sizeof(wave_fmt), cosyvoice_file);
-        vfs->vfs_append_func(&wave_data, sizeof(wave_data), cosyvoice_file);
+        vfs->vfs_append_func(&wave_hdr, sizeof(wave_hdr), audio_file);
+        vfs->vfs_append_func(&wave_fmt, sizeof(wave_fmt), audio_file);
+        vfs->vfs_append_func(&wave_data, sizeof(wave_data), audio_file);
     }
 
     int idx = 0;
@@ -921,19 +909,18 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer: %s\n", text.c_str());
 
-        cosyvoice_client *synthesizer = nullptr;
-
-        if (has_play_audio) {
-            std::function<void()> dummy = do_nothing;
-            synthesizer = generateSynthesizer(_token, _appkey, cosyvoice_file, vfs, dummy);
-            synthesizer->on_start_synthesis(on_start_synthesis);
-        } else {
-            has_play_audio = true;
-            synthesizer = generateSynthesizer(_token, _appkey, cosyvoice_file, vfs, play_audio);
-            synthesizer->on_start_synthesis(on_start_synthesis);
-        }
+        cosyvoice_client *synthesizer = generateSynthesizer(_token, _appkey);
+        synthesizer->on_start_synthesis(on_start_synthesis);
         synthesizer->on_run_synthesis([&text](nlohmann::json &payload) {
             payload["text"] = text;
+        });
+
+        synthesizer->on_binary_data([&audio_file, &vfs, &play_audio](const uint8_t*ptr, int32_t len) {
+            vfs->vfs_append_func(ptr, len, audio_file);
+            if (play_audio) {
+                play_audio();
+                play_audio = nullptr;
+            }
         });
 
         // increment aliasr concurrent count
@@ -949,7 +936,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
     }
-    vfs->vfs_stream_completed_func(cosyvoice_file);
+    vfs->vfs_stream_completed_func(audio_file);
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer All text\n");
 
     return SWITCH_STATUS_SUCCESS;
