@@ -257,7 +257,7 @@ public:
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SynthesisStarted event\n");
                     }
 
-                    runSynthesis(m_text);
+                    runSynthesis();
                     stopSynthesis();
 
                     return;
@@ -407,15 +407,6 @@ public:
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenceEnd event\n");
                     }
-                    /*
-                    if (!m_text_list.empty()) {
-                        std::string text = m_text_list.front();
-                        m_text_list.pop();
-                        runSynthesis(text);
-                    } else {
-                        stopSynthesis();
-                    }
-                    */
                 } else if (synthesis_event["header"]["name"] == "SynthesisCompleted") {
                     /* SynthesisCompleted 事件
                     {
@@ -463,7 +454,6 @@ public:
                     m_vfs->vfs_append_func(wav_data, num_samples, m_file);
                     if (!m_audio_played) {
                         m_audio_played = true;
-                        // dump_wave_hdr();
                         m_play_audio();
                     }
                 } else {
@@ -481,8 +471,7 @@ public:
         }
     }
 
-    int startConnect(const std::string &uri, const std::string &text) {
-        m_text = text;
+    int startConnect(const std::string &uri) {
         if (cosyvoice_globals->_debug) {
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startConnect: %s\n", uri.c_str());
         }
@@ -583,41 +572,10 @@ public:
             }
         }
 
-        /*
-        {
-            while (true) {
-                bool wait = false;
-                {
-                    scoped_lock guard(m_lock);
-                    // If the connection has been closed, stop generating data
-                    if (m_done) {
-                        return -1;
-                    }
-                    // If the connection hasn't receive synthesisReady event
-                    if (!m_synthesisReady) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: m_synthesisReady is false\n");
-                        wait = true;
-                    } else {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: m_synthesisReady is true\n");
-                        break;
-                    }
-                }
-
-                if (wait) {
-                    WaitABit(1000L);
-                    if (cosyvoice_globals->_debug) {
-                        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: wait for SynthesisStarted event\n");
-                    }
-                    continue;
-                }
-            }
-        }
-         */
-
         return 0;
     }
 
-    int runSynthesis(const std::string &text) {
+    int runSynthesis() {
         {
             std::string message_id;
             gen_uuidstr_without_dash(message_id);
@@ -648,11 +606,12 @@ public:
                                        {"name", "RunSynthesis"},
                                        {"appkey", m_appkey}
                                }},
-                    {"payload", {
-                                       {"text", text}
-                               }}
+                    {"payload", {}}
             };
 #endif
+            if (m_on_run_synthesis) {
+                m_on_run_synthesis(json_runSynthesis["payload"]);
+            }
             std::string str_runSynthesis = json_runSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
@@ -798,7 +757,7 @@ public:
     websocketpp::client<T> m_client;
     websocketpp::lib::shared_ptr<websocketpp::lib::thread> m_thread;
 
-    typedef std::function<void(nlohmann::json &)> on_start_synthesis_t;
+    typedef std::function<void(nlohmann::json &)> on_synthesis_cmd_t;
 private:
 
     websocketpp::connection_hdl m_hdl;
@@ -810,15 +769,18 @@ private:
     bool m_synthesisCompleted = false;
     std::string m_appkey;
     std::string m_token;
-    std::string m_text;
     void *m_file;
     vfs_ext_func_t *m_vfs;
     bool m_audio_played = false;
     std::function<void()> m_play_audio;
-    on_start_synthesis_t m_on_start_synthesis;
+    on_synthesis_cmd_t m_on_start_synthesis;
+    on_synthesis_cmd_t m_on_run_synthesis;
 public:
-    void on_start_synthesis(const on_start_synthesis_t &on_start_synthesis) {
-        m_on_start_synthesis = std::move(on_start_synthesis);
+    void on_start_synthesis(const on_synthesis_cmd_t &on_start_synthesis) {
+        m_on_start_synthesis = on_start_synthesis;
+    }
+    void on_run_synthesis(const on_synthesis_cmd_t &on_run_synthesis) {
+        m_on_run_synthesis = on_run_synthesis;
     }
 };
 
@@ -888,7 +850,7 @@ void do_nothing() {}
 static switch_status_t gen_cosyvoice_audio(const char *_token,
                                            const char *_appkey,
                                            const char *_url,
-                                           const cosyvoice_client::on_start_synthesis_t &on_start_synthesis,
+                                           const cosyvoice_client::on_synthesis_cmd_t &on_start_synthesis,
                                            const char *_text,
                                            const char *_saveto,
                                            vfs_ext_func_t *vfs,
@@ -970,21 +932,14 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
             synthesizer = generateSynthesizer(_token, _appkey, cosyvoice_file, vfs, play_audio);
             synthesizer->on_start_synthesis(on_start_synthesis);
         }
-
-        //if (!synthesizer) {
-        //    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "generateSynthesizer failed.\n");
-        //    return SWITCH_STATUS_FALSE;
-        //}
+        synthesizer->on_run_synthesis([&text](nlohmann::json &payload) {
+            payload["text"] = text;
+        });
 
         // increment aliasr concurrent count
         switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-        synthesizer->startConnect(std::string(_url), text);
-
-        //synthesizer->startSynthesis(std::string(_url),  std::string(_voice));
-        //synthesizer->runSynthesis(std::string(_text));
-        //synthesizer->stopSynthesis();
-
+        synthesizer->startConnect(std::string(_url));
         synthesizer->waitForSynthesisCompleted();
 
         // decrement aliasr concurrent count
@@ -1241,18 +1196,18 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
         gen_cosyvoice_audio(_token,
                             _appkey,
                             _url,
-                            [&_voice, &_pitch_rate, &_speech_rate, &_volume](nlohmann::json &playload) {
+                            [&_voice, &_pitch_rate, &_speech_rate, &_volume](nlohmann::json &payload) {
                                 if (_voice) {
-                                    playload["voice"] = _voice;
+                                    payload["voice"] = _voice;
                                 }
                                 if (_volume) {
-                                    playload["volume"] = atoi(_volume);
+                                    payload["volume"] = atoi(_volume);
                                 }
                                 if (_speech_rate) {
-                                    playload["speech_rate"] = atoi(_speech_rate);
+                                    payload["speech_rate"] = atoi(_speech_rate);
                                 }
                                 if (_pitch_rate) {
-                                    playload["pitch_rate"] = atoi(_pitch_rate);
+                                    payload["pitch_rate"] = atoi(_pitch_rate);
                                 }
                             },
                             _text,
