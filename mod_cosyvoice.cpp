@@ -835,6 +835,36 @@ int generateToken(const char *akId, const char *akSecret, char **token, long *ex
 
 void do_nothing() {}
 
+static void *gen_wav_file(const char *_saveto, const vfs_ext_func_t *vfs) {
+    void *wav_file = vfs->vfs_funcs.vfs_open_func(_saveto);
+    if (wav_file) {
+        wave_header_t wave_hdr = {
+                {'R', 'I', 'F', 'F'},
+                2147483583,
+                {'W', 'A', 'V', 'E'},
+        };
+        wave_fmt_t wave_fmt = {
+                {'f', 'm', 't', ' '},
+                16,
+                1,
+                1,
+                16000,
+                32000,
+                2,
+                16
+        };
+        wave_data_t wave_data = {
+                {'d', 'a', 't', 'a'},
+                2147483547
+        };
+
+        vfs->vfs_append_func(&wave_hdr, sizeof(wave_hdr), wav_file);
+        vfs->vfs_append_func(&wave_fmt, sizeof(wave_fmt), wav_file);
+        vfs->vfs_append_func(&wave_data, sizeof(wave_data), wav_file);
+    }
+    return wav_file;
+}
+
 static switch_status_t gen_cosyvoice_audio(const char *_token,
                                            const char *_appkey,
                                            const char *_url,
@@ -861,32 +891,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_mutex_unlock(g_tts_lock);
     */
 
-    void *audio_file = vfs->vfs_funcs.vfs_open_func(_saveto);
-    if (audio_file) {
-        wave_header_t wave_hdr = {
-                {'R', 'I', 'F', 'F'},
-                2147483583,
-                {'W', 'A', 'V', 'E'},
-        };
-        wave_fmt_t wave_fmt = {
-                {'f', 'm', 't', ' '},
-                16,
-                1,
-                1,
-                16000,
-                32000,
-                2,
-                16
-        };
-        wave_data_t wave_data = {
-                {'d', 'a', 't', 'a'},
-                2147483547
-        };
-
-        vfs->vfs_append_func(&wave_hdr, sizeof(wave_hdr), audio_file);
-        vfs->vfs_append_func(&wave_fmt, sizeof(wave_fmt), audio_file);
-        vfs->vfs_append_func(&wave_data, sizeof(wave_data), audio_file);
-    }
+    void *wav_file = gen_wav_file(_saveto, vfs);
 
     int idx = 0;
     std::queue<std::string> text_list;
@@ -915,8 +920,8 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
             payload["text"] = text;
         });
 
-        synthesizer->on_binary_data([&audio_file, &vfs, &play_audio](const uint8_t*ptr, int32_t len) {
-            vfs->vfs_append_func(ptr, len, audio_file);
+        synthesizer->on_binary_data([&wav_file, &vfs, &play_audio](const uint8_t*ptr, int32_t len) {
+            vfs->vfs_append_func(ptr, len, wav_file);
             if (play_audio) {
                 play_audio();
                 play_audio = nullptr;
@@ -936,7 +941,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
     }
-    vfs->vfs_stream_completed_func(audio_file);
+    vfs->vfs_stream_completed_func(wav_file);
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer All text\n");
 
     return SWITCH_STATUS_SUCCESS;
