@@ -869,10 +869,9 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
                                            const char *_appkey,
                                            const char *_url,
                                            const cosyvoice_client::on_synthesis_cmd_t &on_start_synthesis,
-                                           const char *_text,
-                                           const char *_saveto,
-                                           vfs_ext_func_t *vfs,
-                                           std::function<void()> play_audio) {
+                                           const cosyvoice_client::on_binary_data_t &on_binary_data,
+                                           const char *_text
+                                           ) {
     /*
      * Gen Token REF: https://help.aliyun.com/zh/isi/getting-started/use-http-or-https-to-obtain-an-access-token
     switch_mutex_lock(g_tts_lock);
@@ -891,8 +890,6 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     switch_mutex_unlock(g_tts_lock);
     */
 
-    void *wav_file = gen_wav_file(_saveto, vfs);
-
     int idx = 0;
     std::queue<std::string> text_list;
     const char *begin = _text;
@@ -907,7 +904,6 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
     text_list.emplace(begin);
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "[%d]: %s\n", idx++, begin);
 
-    bool has_play_audio = false;
     while (!text_list.empty()) {
         std::string text = text_list.front();
         text_list.pop();
@@ -920,13 +916,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
             payload["text"] = text;
         });
 
-        synthesizer->on_binary_data([&wav_file, &vfs, &play_audio](const uint8_t*ptr, int32_t len) {
-            vfs->vfs_append_func(ptr, len, wav_file);
-            if (play_audio) {
-                play_audio();
-                play_audio = nullptr;
-            }
-        });
+        synthesizer->on_binary_data(on_binary_data);
 
         // increment aliasr concurrent count
         switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
@@ -941,7 +931,6 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
     }
-    vfs->vfs_stream_completed_func(wav_file);
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer All text\n");
 
     return SWITCH_STATUS_SUCCESS;
@@ -1185,6 +1174,10 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
     if (!vfs->vfs_funcs.vfs_exist_func(_saveto)) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s !NOT! exist, gen it\n", _saveto);
 
+        void *wav_file = gen_wav_file(_saveto, vfs);
+
+        std::function<void()> play_audio = std::bind(play_cosyvoice_audio, _saveto, _playback_id, cmd, pool);
+
         gen_cosyvoice_audio(_token,
                             _appkey,
                             _url,
@@ -1202,11 +1195,18 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
                                     payload["pitch_rate"] = atoi(_pitch_rate);
                                 }
                             },
-                            _text,
-                            _saveto,
-                            vfs,
+                            [&wav_file, &vfs, &play_audio](const uint8_t*ptr, int32_t len) {
+                                vfs->vfs_append_func(ptr, len, wav_file);
+                                if (play_audio) {
+                                    play_audio();
+                                    play_audio = nullptr;
+                                }
+                            },
+                            _text
+                            );
 
-                            std::bind(play_cosyvoice_audio, _saveto, _playback_id, cmd, pool));
+        vfs->vfs_stream_completed_func(wav_file);
+
     } else {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "cosyvoice_audio %s exist, just play it\n", _saveto);
         play_cosyvoice_audio(_saveto, _playback_id, cmd, pool);
