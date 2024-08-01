@@ -247,7 +247,6 @@ public:
                             "session_id": "1231231dfdf****"
                         }
                     } */
-                    // onSynthesisStarted(m_asr_ctx, asr_result["text"]);
                     {
                         scoped_lock guard(m_lock);
                         m_synthesisReady = true;
@@ -277,7 +276,6 @@ public:
                         }
                     }
                      */
-                    // onSentenceEnd(m_asr_ctx, asr_result["text"]);
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenceBegin event\n");
                     }
@@ -329,7 +327,6 @@ public:
                         }
                     }
                      */
-                    // onSentenceEnd(m_asr_ctx, asr_result["text"]);
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenSentenceSynthesis event\n");
                     }
@@ -402,8 +399,7 @@ public:
                             ]
                         }
                     }
-                     */
-                    // onSentenceEnd(m_asr_ctx, asr_result["text"]);
+                    */
                     if (cosyvoice_globals->_debug) {
                         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "on SentenceEnd event\n");
                     }
@@ -419,9 +415,7 @@ public:
                                     "status_message": "GATEWAY|SUCCESS|Success."
                         }
                     }
-                     */
-                    // onSentenceEnd(m_asr_ctx, asr_result["text"]);
-
+                    */
                     {
                         scoped_lock guard(m_lock);
                         m_synthesisCompleted = true;
