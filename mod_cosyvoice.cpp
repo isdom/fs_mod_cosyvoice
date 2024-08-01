@@ -143,8 +143,8 @@ public:
     // wss_client;
     typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 
-    WebsocketClient(const std::string &token, const std::string &appkey)
-    : m_open(false), m_done(false), m_appkey(appkey), m_token(token) {
+    explicit WebsocketClient(const std::string &appkey)
+    : m_open(false), m_done(false), m_appkey(appkey) {
         gen_uuidstr_without_dash(m_task_id);
 
         // set up access channels to only log interesting things
@@ -453,7 +453,7 @@ public:
         }
     }
 
-    int startConnect(const std::string &uri) {
+    int startConnect(const std::string &uri, const std::string &token) {
         if (cosyvoice_globals->_debug) {
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startConnect: %s\n", uri.c_str());
         }
@@ -470,7 +470,7 @@ public:
             // Grab a handle for this connection so we can talk to it in a thread
             // safe manor after the event loop starts.
             m_hdl = con->get_handle();
-            con->append_header("X-NLS-Token", m_token);
+            con->append_header("X-NLS-Token", token);
 
             // Queue the connection. No DNS queries or network connections will be
             // made until the io_service event loop is run.
@@ -751,7 +751,6 @@ private:
     bool m_synthesisReady = false;
     bool m_synthesisCompleted = false;
     std::string m_appkey;
-    std::string m_token;
     on_synthesis_cmd_t m_on_start_synthesis;
     on_synthesis_cmd_t m_on_run_synthesis;
     on_binary_data_t   m_on_binary_data;
@@ -767,8 +766,8 @@ public:
     }
 };
 
-cosyvoice_client *generateSynthesizer(const char *token, const char *appkey) {
-    auto *fac = new cosyvoice_client(std::string(token), std::string(appkey));
+cosyvoice_client *generateSynthesizer(const char *appkey) {
+    auto *fac = new cosyvoice_client(std::string(appkey));
     if (!fac) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateClient failed.\n");
         return nullptr;
@@ -904,7 +903,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer: %s\n", text.c_str());
 
-        cosyvoice_client *synthesizer = generateSynthesizer(_token, _appkey);
+        cosyvoice_client *synthesizer = generateSynthesizer(_appkey);
         synthesizer->on_start_synthesis(on_start_synthesis);
         synthesizer->on_run_synthesis([&text](nlohmann::json &payload) {
             payload["text"] = text;
@@ -915,7 +914,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         // increment aliasr concurrent count
         switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-        synthesizer->startConnect(std::string(_url));
+        synthesizer->startConnect(std::string(_url), std::string(_token));
         synthesizer->waitForSynthesisCompleted();
 
         // decrement aliasr concurrent count
