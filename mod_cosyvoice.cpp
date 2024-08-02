@@ -903,7 +903,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer: %s\n", text.c_str());
 
-        cosyvoice_client *synthesizer = generateSynthesizer(_appkey);
+        auto *synthesizer = new cosyvoice_client(std::string(_appkey));
         synthesizer->on_start_synthesis(on_start_synthesis);
         synthesizer->on_run_synthesis([&text](nlohmann::json &payload) {
             payload["text"] = text;
