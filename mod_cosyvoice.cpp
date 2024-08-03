@@ -766,21 +766,7 @@ public:
     }
 };
 
-cosyvoice_client *generateSynthesizer(const char *appkey) {
-    auto *fac = new cosyvoice_client(std::string(appkey));
-    if (!fac) {
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateClient failed.\n");
-        return nullptr;
-    }
-
-#if ENABLE_WSS
-    fac->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
-#endif
-
-    return fac;
-}
-
-//======================================== fun asr end ===============
+//======================================== cosyvoice end ===============
 
 //======================================== freeswitch module start ===============
 SWITCH_MODULE_LOAD_FUNCTION(mod_cosyvoice_load);
@@ -904,6 +890,10 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer: %s\n", text.c_str());
 
         auto *synthesizer = new cosyvoice_client(std::string(_appkey));
+#if ENABLE_WSS
+        synthesizer->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
+#endif
+
         synthesizer->on_start_synthesis(on_start_synthesis);
         synthesizer->on_run_synthesis([&text](nlohmann::json &payload) {
             payload["text"] = text;
