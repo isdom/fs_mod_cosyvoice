@@ -889,28 +889,26 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer: %s\n", text.c_str());
 
-        auto *synthesizer = new cosyvoice_client(std::string(_appkey));
+        cosyvoice_client synthesizer(_appkey);
 #if ENABLE_WSS
         synthesizer->m_client.set_tls_init_handler(bind(&OnTlsInit, ::_1));
 #endif
 
-        synthesizer->on_start_synthesis(on_start_synthesis);
-        synthesizer->on_run_synthesis([&text](nlohmann::json &payload) {
+        synthesizer.on_start_synthesis(on_start_synthesis);
+        synthesizer.on_run_synthesis([&text](nlohmann::json &payload) {
             payload["text"] = text;
         });
 
-        synthesizer->on_binary_data(on_binary_data);
+        synthesizer.on_binary_data(on_binary_data);
 
         // increment aliasr concurrent count
         switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-        synthesizer->startConnect(std::string(_url), std::string(_token));
-        synthesizer->waitForSynthesisCompleted();
+        synthesizer.startConnect(std::string(_url), std::string(_token));
+        synthesizer.waitForSynthesisCompleted();
 
         // decrement aliasr concurrent count
         switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
-
-        delete synthesizer;
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
     }
