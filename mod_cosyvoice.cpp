@@ -706,7 +706,6 @@ public:
             scoped_lock guard(m_lock);
             m_open = true;
         }
-        // onTranscriptionStarted(m_asr_ctx);
         startSynthesis();
     }
 
@@ -720,7 +719,6 @@ public:
             scoped_lock guard(m_lock);
             m_done = true;
         }
-        // onTranscriptionCompleted(m_asr_ctx);
     }
 
     // The fail handler will signal that we should stop sending data
@@ -733,7 +731,6 @@ public:
             scoped_lock guard(m_lock);
             m_done = true;
         }
-        // onTaskFailed(m_asr_ctx);
     }
 
     websocketpp::client<T> m_client;
