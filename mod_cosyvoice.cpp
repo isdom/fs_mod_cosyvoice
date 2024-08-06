@@ -659,7 +659,6 @@ public:
                 }
             }
         }
-        // onChannelClosed(m_asr_ctx);
         return 0;
     }
 
