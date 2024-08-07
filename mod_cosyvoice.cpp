@@ -883,7 +883,7 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         std::string text = text_list.front();
         text_list.pop();
 
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer: %s\n", text.c_str());
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "create synthesizer for : %s\n", text.c_str());
 
         cosyvoice_client synthesizer(_appkey);
 #if ENABLE_WSS
@@ -906,9 +906,9 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         // decrement aliasr concurrent count
         switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
 
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "delete synthesizer ok\n");
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "release synthesizer\n");
     }
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesizer All text\n");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Synthesize All text\n");
 
     return SWITCH_STATUS_SUCCESS;
 }
