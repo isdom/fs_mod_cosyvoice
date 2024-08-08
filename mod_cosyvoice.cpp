@@ -538,7 +538,7 @@ public:
             if (m_on_start_synthesis) {
                 m_on_start_synthesis(json_startSynthesis["payload"]);
             }
-            std::string str_startSynthesis = json_startSynthesis.dump();
+            const std::string str_startSynthesis = json_startSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "startSynthesis: send startSynthesis msg, detail: %s\n",
                               str_startSynthesis.c_str());
 
@@ -594,7 +594,7 @@ public:
             if (m_on_run_synthesis) {
                 m_on_run_synthesis(json_runSynthesis["payload"]);
             }
-            std::string str_runSynthesis = json_runSynthesis.dump();
+            const std::string str_runSynthesis = json_runSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "runSynthesis: send runSynthesis msg, detail: %s\n",
                               str_runSynthesis.c_str());
 
@@ -632,7 +632,7 @@ public:
             json_stopSynthesis["header"] = json_header;
 
 #else
-            nlohmann::json json_stopSynthesis = {
+            const nlohmann::json json_stopSynthesis = {
                     {"header", {
                             // 当次消息请求ID，随机生成32位唯一ID。
                             {"message_id", message_id},
@@ -644,7 +644,7 @@ public:
                     }}
             };
 #endif
-            std::string str_stopSynthesis = json_stopSynthesis.dump();
+            const std::string str_stopSynthesis = json_stopSynthesis.dump();
             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "stopSynthesis: send stopSynthesis msg, detail: %s\n",
                               str_stopSynthesis.c_str());
 
