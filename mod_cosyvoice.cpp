@@ -525,12 +525,8 @@ public:
                                        {"appkey", m_appkey}
                                }},
                     {"payload", {
-                                       // {"voice", voice},
                                        {"format", "pcm"},
                                        {"sample_rate", 16000},
-                                       //{"volume", 100},
-                                       //{"speech_rate", 60},
-                                       //{"pitch_rate", 0},
                                        {"enable_subtitle", true}
                                }}
             };
