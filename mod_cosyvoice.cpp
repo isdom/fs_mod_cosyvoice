@@ -1150,6 +1150,7 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
         void *wav_file = gen_wav_file(_saveto, vfs);
 
         //_saveto, _playback_id, cmd, pool
+        // https://learn.microsoft.com/zh-cn/cpp/cpp/lambda-expressions-in-cpp
         std::function<void()> play_audio = [&] { play_cosyvoice_audio(_saveto, _playback_id, cmd, pool); };
 
         gen_cosyvoice_audio(_token,
