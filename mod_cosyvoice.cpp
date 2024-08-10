@@ -1149,7 +1149,8 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
 
         void *wav_file = gen_wav_file(_saveto, vfs);
 
-        std::function<void()> play_audio = std::bind(play_cosyvoice_audio, _saveto, _playback_id, cmd, pool);
+        //_saveto, _playback_id, cmd, pool
+        std::function<void()> play_audio = [&] { play_cosyvoice_audio(_saveto, _playback_id, cmd, pool); };
 
         gen_cosyvoice_audio(_token,
                             _appkey,
