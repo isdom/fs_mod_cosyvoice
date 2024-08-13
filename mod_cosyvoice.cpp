@@ -928,7 +928,7 @@ SWITCH_STANDARD_API(cosyvoice_concurrent_cnt_function) {
     stream->write_function(stream, "%d\n", concurrent_cnt);
     switch_event_t *event = nullptr;
     if (switch_event_create(&event, SWITCH_EVENT_CUSTOM) == SWITCH_STATUS_SUCCESS) {
-        event->subclass_name = strdup("_cosyvoice_concurrent_cnt");
+        event->subclass_name = strdup("cosyvoice_concurrent_cnt");
         switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Event-Subclass", event->subclass_name);
         switch_event_add_header(event, SWITCH_STACK_BOTTOM, "CosyVoice-Concurrent-Cnt", "%d", concurrent_cnt);
         switch_event_fire(&event);
@@ -1206,8 +1206,8 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_cosyvoice_load) {
     cosyvoice_globals->_debug = true;
 
     SWITCH_ADD_API(api_interface,
-                   "_cosyvoice_concurrent_cnt",
-                   "_cosyvoice_concurrent_cnt api",
+                   "cosyvoice_concurrent_cnt",
+                   "cosyvoice_concurrent_cnt api",
                    cosyvoice_concurrent_cnt_function,
                    "<cmd><args>");
 
