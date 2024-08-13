@@ -15,7 +15,7 @@
 
 typedef struct {
     bool _debug;
-    switch_atomic_t cosyvoice_concurrent_cnt;
+    switch_atomic_t _cosyvoice_concurrent_cnt;
 } cosyvoice_global_t;
 
 cosyvoice_global_t *cosyvoice_globals;
@@ -894,13 +894,13 @@ static switch_status_t gen_cosyvoice_audio(const char *_token,
         synthesizer.on_binary_data(on_binary_data);
 
         // increment aliasr concurrent count
-        switch_atomic_inc(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+        switch_atomic_inc(&cosyvoice_globals->_cosyvoice_concurrent_cnt);
 
         synthesizer.startConnect(std::string(_url), std::string(_token));
         synthesizer.waitForSynthesisCompleted();
 
         // decrement aliasr concurrent count
-        switch_atomic_dec(&cosyvoice_globals->cosyvoice_concurrent_cnt);
+        switch_atomic_dec(&cosyvoice_globals->_cosyvoice_concurrent_cnt);
 
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "release synthesizer\n");
     }
@@ -924,11 +924,11 @@ static void play_cosyvoice_audio(const char *_saveto, const char *_playback_id, 
 }
 
 SWITCH_STANDARD_API(cosyvoice_concurrent_cnt_function) {
-    const uint32_t concurrent_cnt = switch_atomic_read (&cosyvoice_globals->cosyvoice_concurrent_cnt);
+    const uint32_t concurrent_cnt = switch_atomic_read (&cosyvoice_globals->_cosyvoice_concurrent_cnt);
     stream->write_function(stream, "%d\n", concurrent_cnt);
     switch_event_t *event = nullptr;
     if (switch_event_create(&event, SWITCH_EVENT_CUSTOM) == SWITCH_STATUS_SUCCESS) {
-        event->subclass_name = strdup("cosyvoice_concurrent_cnt");
+        event->subclass_name = strdup("_cosyvoice_concurrent_cnt");
         switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Event-Subclass", event->subclass_name);
         switch_event_add_header(event, SWITCH_STACK_BOTTOM, "CosyVoice-Concurrent-Cnt", "%d", concurrent_cnt);
         switch_event_fire(&event);
@@ -1206,8 +1206,8 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_cosyvoice_load) {
     cosyvoice_globals->_debug = true;
 
     SWITCH_ADD_API(api_interface,
-                   "cosyvoice_concurrent_cnt",
-                   "cosyvoice_concurrent_cnt api",
+                   "_cosyvoice_concurrent_cnt",
+                   "_cosyvoice_concurrent_cnt api",
                    cosyvoice_concurrent_cnt_function,
                    "<cmd><args>");
 
