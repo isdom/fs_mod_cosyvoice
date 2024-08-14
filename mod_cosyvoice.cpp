@@ -1161,13 +1161,13 @@ SWITCH_STANDARD_API(uuid_cosyvoice_function) {
                                     payload["voice"] = _voice;
                                 }
                                 if (_volume) {
-                                    payload["volume"] = atoi(_volume);
+                                    payload["volume"] = strtol(_volume, nullptr, 10);
                                 }
                                 if (_speech_rate) {
-                                    payload["speech_rate"] = atoi(_speech_rate);
+                                    payload["speech_rate"] = strtol(_speech_rate, nullptr, 10);
                                 }
                                 if (_pitch_rate) {
-                                    payload["pitch_rate"] = atoi(_pitch_rate);
+                                    payload["pitch_rate"] = strtol(_pitch_rate, nullptr, 10);
                                 }
                             },
                             [&wav_file, &vfs, &play_audio](const uint8_t*ptr, int32_t len) {
