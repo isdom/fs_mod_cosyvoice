@@ -87,18 +87,18 @@ typedef struct {
 
 typedef struct {
     char        subchunk1_id[4]; //内容为"fmt"
-    uint32_t    subchunk1_size;  //存储该子块的字节数（不含前面的Subchunk1ID和Subchunk1Size这8个字节）
+    uint32_t    subchunk1_size;  //存储该子块的字节数（不含前面的 subchunk1_id 和 subchunk1_size 这8个字节）
     uint16_t    audio_format;    //存储音频文件的编码格式，例如若为PCM则其存储值为1。
     uint16_t    num_channels;    //声道数，单声道(Mono)值为1，双声道(Stereo)值为2，等等
     uint32_t    sample_rate;     //采样率，如8k，44.1k等
-    uint32_t    byte_rate;       //每秒存储的bit数，其值 = SampleRate * NumChannels * BitsPerSample / 8
-    uint16_t    block_align;     //块对齐大小，其值 = NumChannels * BitsPerSample / 8
+    uint32_t    byte_rate;       //每秒存储的bit数，其值 = sample_rate * num_channels * bits_per_sample / 8
+    uint16_t    block_align;     //块对齐大小，其值 = num_channels * bits_per_sample / 8
     uint16_t    bits_per_sample;  //每个采样点的bit数，一般为8,16,32等。
 } wave_fmt_t;
 
 typedef struct {
     char        subchunk2_id[4]; //内容为“data”
-    uint32_t    subchunk2_size;  //接下来的正式的数据部分的字节数，其值 = NumSamples * NumChannels * BitsPerSample / 8
+    uint32_t    subchunk2_size;  //接下来的正式的数据部分的字节数，其值 = num_samples * num_channels * bits_per_sample / 8
 } wave_data_t;
 
 /**
@@ -769,42 +769,6 @@ extern "C"
 {
 SWITCH_MODULE_DEFINITION(mod_cosyvoice, mod_cosyvoice_load, mod_cosyvoice_shutdown, nullptr);
 };
-
-/**
- * 根据AccessKey ID和AccessKey Secret重新生成一个token，
- * 并获取其有效期时间戳
- */
-/*
-int generateToken(const char *akId, const char *akSecret, char **token, long *expireTime) {
-    NlsToken nlsTokenRequest;
-    nlsTokenRequest.setAccessKeyId(akId);
-    nlsTokenRequest.setKeySecret(akSecret);
-    //打印请求token的参数
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "begin send generate token rquest: akId=%s, akSecret=%s\n",
-                      akId, akSecret);
-    int ret = nlsTokenRequest.applyNlsToken();
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE,
-                      "request success, status code=%d, token=%s, expireTime=%d, message=%s\n", ret,
-                      nlsTokenRequest.getToken(), nlsTokenRequest.getExpireTime(), nlsTokenRequest.getErrorMsg());
-    if (ret < 0) {
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateToken Failed: %s\n",
-                          nlsTokenRequest.getErrorMsg());
-        return -1;
-    }
-    if (*token != nullptr) {
-        free(*token);
-    }
-    *token = strdup(nlsTokenRequest.getToken());
-    if (strcmp(*token, "") == 0) {
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "generateToken Failed: token is '' \n");
-        return -1;
-    }
-    *expireTime = nlsTokenRequest.getExpireTime();
-    return 0;
-}
-*/
-
-void do_nothing() {}
 
 static void *gen_wav_file(const char *_saveto, const vfs_ext_func_t *vfs) {
     void *wav_file = vfs->vfs_funcs.vfs_open_func(_saveto);
